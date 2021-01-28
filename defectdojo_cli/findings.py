@@ -140,6 +140,7 @@ class Findings(object):
                             action='store_true', dest='scope')
         parser.add_argument('--out_of_scope', help='List only findings out-of-scope',
                             action='store_false', dest='scope')
+        parser.add_argument('--json', help='Print output in JSON format')
         parser.set_defaults(active=None, valid=None, scope=None)
 
         request_params = dict()
@@ -197,9 +198,57 @@ class Findings(object):
 
         # Make a request to API
         response = requests.get(FINDINGS_URL, headers=headers, params=request_params)
-        self.output = json.loads(response.text)
-        self.pretty_output = json.dumps(self.output, indent=4)
-        print(self.pretty_output)
+
+        self.json_out = json.loads(response.text)
+        if args['json'] is not None:
+            # Print output in json
+            self.pretty_json_out = json.dumps(self.output, indent=4)
+            print(self.pretty_json_out)
+        else:
+            # Print output in a more human readable way
+            criticals = []
+            highs = []
+            mediums = []
+            lows = []
+            infos = []
+
+            for finding in self.json_out['results']:
+                if finding['severity'] == 'Critical':
+                    criticals.append(finding)
+                if finding['severity'] == 'High':
+                    highs.append(finding)
+                if finding['severity'] == 'Medium':
+                    mediums.append(finding)
+                if finding['severity'] == 'Low':
+                    lows.append(finding)
+                if finding['severity'] == 'Info':
+                    infos.append(finding)
+
+            if criticals:
+                print('CRITICAL:')
+                for finding in criticals:
+                    print(str(finding['title']+': '+self.url+'/finding/'+str(finding['id'])))
+                print()
+            if highs:
+                print('HIGH:')
+                for finding in highs:
+                    print(str(finding['title']+': '+self.url+'/finding/'+str(finding['id'])))
+                print()
+            if mediums:
+                print('MEDIUM:')
+                for finding in mediums:
+                    print(str(finding['title']+': '+self.url+'/finding/'+str(finding['id'])))
+                print()
+            if lows:
+                print('LOW:')
+                for finding in lows:
+                    print(str(finding['title']+': '+self.url+'/finding/'+str(finding['id'])))
+                print()
+            if infos:
+                print('INFO:')
+                for finding in infos:
+                    print(str(finding['title']+': '+self.url+'/finding/'+str(finding['id'])))
+                print()
 
         if response.status_code == 200:
             # Sucess
