@@ -238,36 +238,31 @@ class Findings(object):
             if criticals:
                 print('#################### CRITICAL ####################')
                 for finding in criticals:
-                    print()
-                    print(str(finding['title']))
+                    print('\n'+str(finding['title']))
                     print(self.url+'/finding/'+str(finding['id']))
                 print('\n\n')
             if highs:
                 print('#################### HIGH ####################')
                 for finding in highs:
-                    print()
-                    print(str(finding['title']))
+                    print('\n'+str(finding['title']))
                     print(self.url+'/finding/'+str(finding['id']))
                 print('\n\n')
             if mediums:
                 print('#################### MEDIUM ####################')
                 for finding in mediums:
-                    print()
-                    print(str(finding['title']))
+                    print('\n'+str(finding['title']))
                     print(self.url+'/finding/'+str(finding['id']))
                 print('\n\n')
             if lows:
                 print('#################### LOW ####################')
                 for finding in lows:
-                    print()
-                    print(str(finding['title']))
+                    print('\n'+str(finding['title']))
                     print(self.url+'/finding/'+str(finding['id']))
                 print('\n\n')
             if infos:
                 print('#################### INFO ####################')
                 for finding in infos:
-                    print()
-                    print(str(finding['title']))
+                    print('\n'+str(finding['title']))
                     print(self.url+'/finding/'+str(finding['id']))
                 print('\n\n')
 
