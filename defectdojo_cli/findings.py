@@ -140,7 +140,9 @@ class Findings(object):
                             action='store_true', dest='scope')
         parser.add_argument('--out_of_scope', help='List only findings out-of-scope',
                             action='store_false', dest='scope')
-        parser.add_argument('--json', help='Print output in JSON format')
+        parser.add_argument('--json', help='Print output in JSON format', action='store_true', default=False)
+        parser.add_argument('--limit', help='Number of results to return (by default it gets all the findings)')
+        parser.add_argument('--offset', help='The initial index from which to return the results (not needed if the --limit flag is not set)')
         parser.set_defaults(active=None, valid=None, scope=None)
 
         request_params = dict()
@@ -195,14 +197,23 @@ class Findings(object):
                 request_params['out_of_scope'] = 3
             if self.scope is False:
                 request_params['out_of_scope'] = 2
+        if args['limit'] is not None:
+            self.limit = args['limit']
+            request_params['limit'] = self.limit
+        else:
+            # Make a request to API getting only one finding to retrieve the total amount of findings
+            request_params['limit'] = 1
+            response = requests.get(FINDINGS_URL, headers=headers, params=request_params)
+            self.limit = int(json.loads(response.text)['count'])
+            request_params['limit'] = self.limit
 
         # Make a request to API
         response = requests.get(FINDINGS_URL, headers=headers, params=request_params)
 
         self.json_out = json.loads(response.text)
-        if args['json'] is not None:
-            # Print output in json
-            self.pretty_json_out = json.dumps(self.output, indent=4)
+        if args['json'] is True:
+            # Pretty print output in json
+            self.pretty_json_out = json.dumps(self.json_out, indent=4)
             print(self.pretty_json_out)
         else:
             # Print output in a more human readable way
@@ -225,30 +236,40 @@ class Findings(object):
                     infos.append(finding)
 
             if criticals:
-                print('CRITICAL:')
+                print('#################### CRITICAL ####################')
                 for finding in criticals:
-                    print(str(finding['title']+': '+self.url+'/finding/'+str(finding['id'])))
-                print()
+                    print()
+                    print(str(finding['title']))
+                    print(self.url+'/finding/'+str(finding['id']))
+                print('\n\n')
             if highs:
-                print('HIGH:')
+                print('#################### HIGH ####################')
                 for finding in highs:
-                    print(str(finding['title']+': '+self.url+'/finding/'+str(finding['id'])))
-                print()
+                    print()
+                    print(str(finding['title']))
+                    print(self.url+'/finding/'+str(finding['id']))
+                print('\n\n')
             if mediums:
-                print('MEDIUM:')
+                print('#################### MEDIUM ####################')
                 for finding in mediums:
-                    print(str(finding['title']+': '+self.url+'/finding/'+str(finding['id'])))
-                print()
+                    print()
+                    print(str(finding['title']))
+                    print(self.url+'/finding/'+str(finding['id']))
+                print('\n\n')
             if lows:
-                print('LOW:')
+                print('#################### LOW ####################')
                 for finding in lows:
-                    print(str(finding['title']+': '+self.url+'/finding/'+str(finding['id'])))
-                print()
+                    print()
+                    print(str(finding['title']))
+                    print(self.url+'/finding/'+str(finding['id']))
+                print('\n\n')
             if infos:
-                print('INFO:')
+                print('#################### INFO ####################')
                 for finding in infos:
-                    print(str(finding['title']+': '+self.url+'/finding/'+str(finding['id'])))
-                print()
+                    print()
+                    print(str(finding['title']))
+                    print(self.url+'/finding/'+str(finding['id']))
+                print('\n\n')
 
         if response.status_code == 200:
             # Sucess
