@@ -1,16 +1,14 @@
-#!/bin/python3
-
 import sys
 import argparse
 from defectdojo_cli import Findings
 from defectdojo_cli import Engagements
 
 # Multilevel argparse based on https://chase-seibert.github.io/blog/2014/03/21/python-multilevel-argparse.html
-class DefectDojoCLI:
+class DefectDojoCLI(object):
     def __init__(self):
         parser = argparse.ArgumentParser(
-                description='CI/CD integration for DefectDojo',
-                usage='''defect-dojo <command> [<args>]
+                description='CLI wrapper for DefectDojo using APIv2',
+                usage='''defectdojo <command> [<args>]
 
     You can use the following commands:
             findings        Operations related to findings (findings --help for more details)
