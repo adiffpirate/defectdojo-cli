@@ -3,6 +3,7 @@ import json
 import sys
 import argparse
 import requests
+from unittest.mock import PropertyMock
 from defectdojo_cli.util import Util
 
 class Findings(object):
@@ -80,24 +81,62 @@ class Findings(object):
         optional.add_argument('--min_severity', help='Ignore findings below this severity (default = "Low")',
                               choices=['Informational', 'Low', 'Medium', 'High', 'Critical'], default='Low')
         optional.add_argument('--tag', help='Scanner tag (can be used multiple times)', action='append')
-        optional.add_argument('--auto_close', help='Close all the open findings from --scanner and '+
-                              '--engagement_id that are not listed in this upload (requires deduplication)',
+        optional.add_argument('--auto_close', help='Close all the open findings from --scanner and '
+                              +'--engagement_id that are not listed in this upload (default = False)',
                               action='store_true', default=False)
         parser._action_groups.append(optional)
         # Parse out arguments ignoring the first three (because we're inside a sub-command)
         args = vars(parser.parse_args(sys.argv[3:]))
         # Upload results
         response = self.upload(**args)
-
+        # Auto close open findings (if requested)
         if response.status_code == 201: # Success
-            if args['auto_close']:
-                json_out = json.loads(response.text)
-                # TODO
-            # Pretty print JSON response
-            Util().default_output(response, sucess_status_code=201)
-        else: # Failure
-            # Pretty print JSON response
-            Util().default_output(response, sucess_status_code=201)
+            if args['auto_close']: # If --auto-close flag was used
+                # Load upload response as JSON
+                upload_out = json.loads(response.text)
+                # Get all the open findings from this engagement and scanner
+                tmp_args = dict()
+                tmp_args['url'] = args['url']
+                tmp_args['api_key'] = args['api_key']
+                tmp_args['engagement_id'] = args['engagement_id']
+                tmp_args['scanner'] = args['scanner']
+                tmp_args['active'] = True
+                tmp_response = self.list(**tmp_args)
+                open_findings_out = json.loads(tmp_response.text)
+                # Create a list with all the open findings IDs
+                open_findings_ids = set()
+                for open_finding in open_findings_out['results']:
+                    open_findings_ids.add(open_finding['id'])
+                # Get the findings that were uploaded 
+                tmp_args = dict()
+                tmp_args['url'] = args['url']
+                tmp_args['api_key'] = args['api_key']
+                tmp_args['test_id'] = upload_out['test'] # Get the test ID from the upload output
+                tmp_response = self.list(**tmp_args)
+                uploaded_findings_out = json.loads(tmp_response.text)
+                # Create a list with all the uploaded findings IDs
+                uploaded_findings_ids = set()
+                for uploaded_finding in uploaded_findings_out['results']:
+                    uploaded_findings_ids.add(uploaded_finding['id'])
+                    # If finding is a duplicate
+                    if uploaded_finding['duplicate_finding'] is not None:
+                        # Also add the original finding id to the list
+                        uploaded_findings_ids.add(uploaded_finding['duplicate_finding'])
+                # Remove the uploaded findings id from the open findings id list
+                open_findings_ids = open_findings_ids - uploaded_findings_ids
+                # Close the remain open findings
+                tmp_args = dict()
+                tmp_args['url'] = args['url']
+                tmp_args['api_key'] = args['api_key']
+                for open_finding_id in open_findings_ids:
+                    tmp_args['finding_id'] = open_finding_id
+                    self.close(**tmp_args)
+                closed_findings_ids = open_findings_ids
+                # Add the list of closed findings ids to the output
+                upload_out['auto_closed_findings'] = list(closed_findings_ids)
+                type(response).text = PropertyMock(return_value=json.dumps(upload_out))
+        # Pretty print JSON response
+        Util().default_output(response, sucess_status_code=201)
 
     def list(self, **kwargs):
         args = dict()
@@ -108,48 +147,85 @@ class Findings(object):
         request_params = dict()
         API_URL = args['url']+'/api/v2'
         FINDINGS_URL = API_URL+'/findings/'
-        if args['id'] is not None:
-            request_params['id'] = args['id']
-        if args['test_id'] is not None:
-            request_params['test'] = args['test_id']
-        if args['product_id'] is not None:
-            request_params['test__engagement__product'] = args['product_id']
-        if args['engagement_id'] is not None:
-            request_params['test__engagement'] = args['engagement_id']
-        if args['scanner'] is not None:
-            # In order to filter scanner we need to get its ID via API
-            temp_params = dict()
-            temp_params['name'] = args['scanner']
-            # Make a get request to /test_types passing the scanner as parameter
-            temp_response = Util().request_apiv2('GET', API_URL+'/test_types/', args['api_key'], params=temp_params)
-            # Tranform the above response in json and get the id
-            scanner_id = json.loads(temp_response.text)['results'][0]['id']
-            # Add to request_params
-            request_params['test__test_type'] = scanner_id
-        if args['active'] is not None:
-            if args['active'] is True:
-                request_params['active'] = 2
-            if args['active'] is False:
-                request_params['active'] = 3
-        if args['valid'] is not None:
-            if args['valid'] is True:
-                request_params['false_p'] = 3
-            if args['valid'] is False:
-                request_params['false_p'] = 2
-        if args['scope'] is not None:
-            if args['scope'] is True:
-                request_params['out_of_scope'] = 3
-            if args['scope'] is False:
-                request_params['out_of_scope'] = 2
-        if args['limit'] is not None:
-            request_params['limit'] = args['limit']
-        else:
-            # Make a request to API getting only one finding to retrieve the total amount of findings
-            temp_params = args.copy()
-            temp_params['limit'] = 1
-            temp_response = self.list(**temp_params)
-            limit = int(json.loads(temp_response.text)['count'])
-            request_params['limit'] = limit
+
+        try:
+            if args['id'] is not None:
+                request_params['id'] = args['id']
+        except:
+            pass
+
+        try:
+            if args['test_id'] is not None:
+                request_params['test'] = args['test_id']
+        except:
+            pass
+
+        try:
+            if args['product_id'] is not None:
+                request_params['test__engagement__product'] = args['product_id']
+        except:
+            pass
+
+        try:
+            if args['engagement_id'] is not None:
+                request_params['test__engagement'] = args['engagement_id']
+        except:
+            pass
+
+        try:
+            if args['scanner'] is not None:
+                # In order to filter scanner we need to get its ID via API
+                temp_params = dict()
+                temp_params['name'] = args['scanner']
+                # Make a get request to /test_types passing the scanner as parameter
+                temp_response = Util().request_apiv2('GET', API_URL+'/test_types/', args['api_key'], params=temp_params)
+                # Tranform the above response in json and get the id
+                scanner_id = json.loads(temp_response.text)['results'][0]['id']
+                # Add to request_params
+                request_params['test__test_type'] = scanner_id
+        except:
+            pass
+
+        try:
+            if args['active'] is not None:
+                if args['active'] is True:
+                    request_params['active'] = 2
+                if args['active'] is False:
+                    request_params['active'] = 3
+        except:
+            pass
+
+        try:
+            if args['valid'] is not None:
+                if args['valid'] is True:
+                    request_params['false_p'] = 3
+                if args['valid'] is False:
+                    request_params['false_p'] = 2
+        except:
+            pass
+
+        try:
+            if args['scope'] is not None:
+                if args['scope'] is True:
+                    request_params['out_of_scope'] = 3
+                if args['scope'] is False:
+                    request_params['out_of_scope'] = 2
+        except:
+            pass
+
+        try:
+            if args['limit'] is not None:
+                request_params['limit'] = args['limit']
+            else:
+                # Make a request to API getting only one finding to retrieve the total amount of findings
+                temp_params = args.copy()
+                temp_params['limit'] = 1
+                temp_response = self.list(**temp_params)
+                limit = int(json.loads(temp_response.text)['count'])
+                request_params['limit'] = limit
+        except:
+            pass
+
         # Make request
         response = Util().request_apiv2('GET', FINDINGS_URL, args['api_key'], params=request_params)
         return response
@@ -262,7 +338,7 @@ class Findings(object):
         request_json = dict()
         API_URL = args['url']+'/api/v2'
         FINDINGS_URL = API_URL+'/findings/'
-        FINDINGS_ID_URL = FINDINGS_URL+args['finding_id']+'/'
+        FINDINGS_ID_URL = FINDINGS_URL+str(args['finding_id'])+'/'
         if args['active'] is not None:
             request_json['active'] = args['active']
         if args['mitigated'] is not None:
