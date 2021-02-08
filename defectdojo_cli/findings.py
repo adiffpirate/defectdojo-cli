@@ -14,10 +14,11 @@ class Findings(object):
     You can use the following sub_commands:
         upload          Upload findings (scan results)
         list            List findings
+        update          Update a finding
         print_scanners  Print a list of possible entries for the --scanner flag
 ''')
         parser.add_argument('sub_command', help='Sub_command to run',
-                            choices=['upload', 'list', 'print_scanners'])
+                            choices=['upload', 'list', 'update', 'print_scanners'])
         # Get sub_command
         args = parser.parse_args(sys.argv[2:3])
         # Use dispatch pattern to invoke method with same name (that starts with _)
@@ -250,3 +251,56 @@ class Findings(object):
             pretty_json_out = json.dumps(json_out, indent=4)
             print(pretty_json_out)
             exit(1)
+
+    def update(self, **kwargs):
+        args = dict()
+        # Parse arguments
+        for key,value in kwargs.items():
+            args[key] = value
+        # Prepare JSON data to be send
+        request_json = dict()
+        API_URL = args['url']+'/api/v2'
+        FINDINGS_URL = API_URL+'/findings/'
+        FINDINGS_ID_URL = FINDINGS_URL+args['finding_id']+'/'
+        if args['active'] is not None:
+            request_json['active'] = args['active']
+        if args['mitigated'] is not None:
+            request_json['is_Mitigated'] = args['mitigated']
+        request_json = json.dumps(request_json)
+        # Make the request
+        response = Util().request_apiv2('PATCH', FINDINGS_ID_URL, args['api_key'], data=request_json)
+        return response
+
+    def _update(self):
+        # Read user-supplied arguments
+        parser = argparse.ArgumentParser(description='Update a finding on DefectDojo',
+                                         usage='defectdojo finding update FINDING_ID [<args>]')
+        optional = parser._action_groups.pop()
+        required = parser.add_argument_group('required arguments')
+        parser.add_argument('finding_id', help='ID of the finding to be updated')
+        required.add_argument('--url', help='DefectDojo URL', required=True)
+        required.add_argument('--api_key', help='API v2 Key', required=True)
+        optional.add_argument('--active', help='Set finding as active (true) or inactive (false)',
+                              choices=['true', 'false'])
+        optional.add_argument('--mitigated', help='Indicates if the finding is mitigated (true) or not (false)',
+                              choices=['true', 'false'])
+        parser._action_groups.append(optional)
+        # Parse out arguments ignoring the first three (because we're inside a sub_command)
+        args = vars(parser.parse_args(sys.argv[3:]))
+        if args['active'] is not None:
+            if args['active'] == 'true':
+                args['active'] = True
+            else:
+                args['active'] = False
+        if args['mitigated'] is not None:
+            if args['mitigated'] == 'true':
+                args['mitigated'] = True
+            else:
+                args['mitigated'] = False
+        # Update finding
+        response = self.update(**args)
+
+        print(response.request.body)
+
+        # Pretty print JSON response
+        Util().default_output(response, sucess_status_code=200)
