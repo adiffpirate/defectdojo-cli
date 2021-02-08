@@ -81,19 +81,42 @@ class Findings(object):
         optional.add_argument('--min_severity', help='Ignore findings below this severity (default = "Low")',
                               choices=['Informational', 'Low', 'Medium', 'High', 'Critical'], default='Low')
         optional.add_argument('--tag', help='Scanner tag (can be used multiple times)', action='append')
+        optional.add_argument('--note', help='Add the string passed to this flag as a note to each finding uploaded')
         optional.add_argument('--auto_close', help='Close all the open findings from --scanner and '
                               +'--engagement_id that are not listed in this upload (default = False)',
                               action='store_true', default=False)
+        optional.add_argument('--ac_note', help='Add the string passed to this flag as a note to each finding closed by --auto_close')
         parser._action_groups.append(optional)
         # Parse out arguments ignoring the first three (because we're inside a sub-command)
         args = vars(parser.parse_args(sys.argv[3:]))
         # Upload results
         response = self.upload(**args)
+        # Load upload response as JSON
+        upload_out = json.loads(response.text)
+        # If --note flag was passed
+        if args['note'] is not None:
+            # Get the findings that were uploaded 
+            tmp_args = dict()
+            tmp_args['url'] = args['url']
+            tmp_args['api_key'] = args['api_key']
+            tmp_args['test_id'] = upload_out['test'] # Get the test ID from the upload output
+            tmp_response = self.list(**tmp_args)
+            uploaded_findings_out = json.loads(tmp_response.text)
+            # Create a list with all the uploaded findings IDs
+            uploaded_findings_ids = set()
+            for uploaded_finding in uploaded_findings_out['results']:
+                uploaded_findings_ids.add(uploaded_finding['id'])
+            # Add note to each uploaded finding
+            tmp_args = dict()
+            tmp_args['url'] = args['url']
+            tmp_args['api_key'] = args['api_key']
+            tmp_args['entry'] = args['note']
+            for uploaded_finding_id in uploaded_findings_ids:
+                tmp_args['finding_id'] = uploaded_finding_id
+                self.add_note(**tmp_args)
         # Auto close open findings (if requested)
         if response.status_code == 201: # Success
             if args['auto_close']: # If --auto-close flag was used
-                # Load upload response as JSON
-                upload_out = json.loads(response.text)
                 # Get all the open findings from this engagement and scanner
                 tmp_args = dict()
                 tmp_args['url'] = args['url']
@@ -135,6 +158,16 @@ class Findings(object):
                 # Add the list of closed findings ids to the output
                 upload_out['auto_closed_findings'] = list(closed_findings_ids)
                 type(response).text = PropertyMock(return_value=json.dumps(upload_out))
+                # If the --ac_note was passed
+                if args['ac_note'] is not None:
+                    tmp_args = dict()
+                    tmp_args['url'] = args['url']
+                    tmp_args['api_key'] = args['api_key']
+                    tmp_args['entry'] = args['ac_note']
+                    # Add note to each closed finding
+                    for closed_finding_id in closed_findings_ids:
+                        tmp_args['finding_id'] = closed_finding_id
+                        self.add_note(**tmp_args)
         # Pretty print JSON response
         Util().default_output(response, sucess_status_code=201)
 
@@ -410,3 +443,21 @@ class Findings(object):
         response = self.close(**args)
         # Pretty print JSON response
         Util().default_output(response, sucess_status_code=200)
+
+    def add_note(self, url, api_key, finding_id, entry, private=None, note_type=None):
+        # Prepare parameters
+        API_URL = url+'/api/v2/'
+        FINDINGS_URL = API_URL+'findings/'
+        FINDINGS_ID_URL = FINDINGS_URL+str(finding_id)+'/'
+        FINDINGS_ID_NOTES_URL = FINDINGS_ID_URL+'notes/'
+        # Prepare JSON data to be send
+        request_json = dict()
+        request_json['entry'] = entry
+        if private is not None:
+            request_json['private'] = private
+        if note_type is not None:
+            request_json['note_type'] = note_type
+        request_json = json.dumps(request_json)
+        # Make the request
+        response = Util().request_apiv2('POST', FINDINGS_ID_NOTES_URL, api_key, data=request_json)
+        return response
