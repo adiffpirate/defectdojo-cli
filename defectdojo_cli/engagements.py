@@ -150,8 +150,10 @@ class Engagements(object):
             request_json['version'] = args['product_version']
         if args['status'] is not None:
             request_json['status'] = args['status']
+        request_json = json.dumps(request_json)
         # Make the request
         response = Util().request_apiv2('PATCH', ENGAGEMENTS_ID_URL, args['api_key'], data=request_json)
+        return response
 
     def _update(self):
         # Read user-supplied arguments
