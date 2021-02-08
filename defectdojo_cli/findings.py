@@ -253,14 +253,17 @@ class Findings(object):
         optional.add_argument('--false_positives', help='List only false-positives findings',
                               action='store_false', dest='valid')
         optional.add_argument('--in_scope', help='List only findings in-scope',
-                            action='store_true', dest='scope')
+                              action='store_true', dest='scope')
         optional.add_argument('--out_of_scope', help='List only findings out-of-scope',
-                            action='store_false', dest='scope')
+                              action='store_false', dest='scope')
         optional.add_argument('--json', help='Print output in JSON format', action='store_true', default=False)
         optional.add_argument('--limit',
                               help='Number of results to return (by default it gets all the findings)')
         optional.add_argument('--offset', help='The initial index from which to return the results '
                               +'(not needed if the --limit flag is not set)')
+        optional.add_argument('--fail_if_found',
+                              help='Returns a non-zero exit code if any findings are returned (default=false)',
+                              action='store_true', default=False)
         optional.set_defaults(active=None, valid=None, scope=None)
         parser._action_groups.append(optional)
         # Parse out arguments ignoring the first three (because we're inside a sub-command)
@@ -270,7 +273,7 @@ class Findings(object):
         # Print output
         json_out = json.loads(response.text)
         if response.status_code == 200: # Sucess
-            if args['json'] is True: # If --json flag is used
+            if args['json'] is True: # If --json flag was passed
                 # Pretty print output in json
                 pretty_json_out = json.dumps(json_out, indent=4)
                 print(pretty_json_out)
@@ -322,7 +325,10 @@ class Findings(object):
                         print('\n'+str(finding['title']))
                         print(args['url']+'/finding/'+str(finding['id']))
                     print('\n\n')
-            exit(0)
+            if args['fail_if_found'] is not None and json_out['count'] > 0: # If --fail_if_found flag was passed
+                exit(1)
+            else:
+                exit(0)
         else: # Failure
             # Pretty print output in json
             pretty_json_out = json.dumps(json_out, indent=4)
