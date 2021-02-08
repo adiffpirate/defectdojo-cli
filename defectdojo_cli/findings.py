@@ -15,10 +15,11 @@ class Findings(object):
         upload          Upload findings (scan results)
         list            List findings
         update          Update a finding
+        close           Close a finding
         print_scanners  Print a list of possible entries for the --scanner flag
 ''')
         parser.add_argument('sub_command', help='Sub_command to run',
-                            choices=['upload', 'list', 'update', 'print_scanners'])
+                            choices=['upload', 'list', 'update', 'close', 'print_scanners'])
         # Get sub_command
         args = parser.parse_args(sys.argv[2:3])
         # Use dispatch pattern to invoke method with same name (that starts with _)
@@ -299,8 +300,31 @@ class Findings(object):
                 args['mitigated'] = False
         # Update finding
         response = self.update(**args)
+        # Pretty print JSON response
+        Util().default_output(response, sucess_status_code=200)
 
-        print(response.request.body)
+    def close(self, **kwargs):
+        args = dict()
+        # Parse arguments
+        for key,value in kwargs.items():
+            args[key] = value
+        args['active'] = False
+        args['mitigated'] = True
+        # Call the update method with active=False and mitigated=True
+        response = self.update(**args)
+        return response
 
+    def _close(self):
+        # Read user-supplied arguments
+        parser = argparse.ArgumentParser(description='Close a finding on DefectDojo',
+                                         usage='defectdojo finding close FINDING_ID [<args>]')
+        required = parser.add_argument_group('required arguments')
+        parser.add_argument('finding_id', help='ID of the finding to be closed')
+        required.add_argument('--url', help='DefectDojo URL', required=True)
+        required.add_argument('--api_key', help='API v2 Key', required=True)
+        # Parse out arguments ignoring the first three (because we're inside a sub_command)
+        args = vars(parser.parse_args(sys.argv[3:]))
+        # Close finding
+        response = self.close(**args)
         # Pretty print JSON response
         Util().default_output(response, sucess_status_code=200)
