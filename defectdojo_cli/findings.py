@@ -85,13 +85,15 @@ class Findings(object):
         # Parse out arguments ignoring the first three (because we're inside a sub-command)
         args = vars(parser.parse_args(sys.argv[3:]))
         # Upload results
-        response = self._upload(**args)
-        # Print output
-        if args['auto_close']:
-            if response.status_code == 201: #Success
-                # Pretty print JSON response
-                Util().default_output(response, sucess_status_code=201)
-        else:
+        response = self.upload(**args)
+
+        if response.status_code == 201: # Success
+            if args['auto_close']:
+                json_out = json.loads(response.text)
+                # TODO
+            # Pretty print JSON response
+            Util().default_output(response, sucess_status_code=201)
+        else: # Failure
             # Pretty print JSON response
             Util().default_output(response, sucess_status_code=201)
 
@@ -106,6 +108,8 @@ class Findings(object):
         FINDINGS_URL = API_URL+'/findings/'
         if args['id'] is not None:
             request_params['id'] = args['id']
+        if args['test_id'] is not None:
+            request_params['test'] = args['test_id']
         if args['product_id'] is not None:
             request_params['test__engagement__product'] = args['product_id']
         if args['engagement_id'] is not None:
@@ -157,18 +161,19 @@ class Findings(object):
         required.add_argument('--url', help='DefectDojo URL', required=True)
         required.add_argument('--api_key', help='API v2 Key', required=True)
         optional.add_argument('--id', help='Get finding with this id')
+        optional.add_argument('--test_id', help='Filter by test')
         optional.add_argument('--product_id', help='Filter by product')
         optional.add_argument('--engagement_id', help='Filter by engagement')
         optional.add_argument('--scanner', help='Filter by scanner',
                               choices=Util().ACCEPTED_SCANS, metavar='SCANNER')
         optional.add_argument('--active', help='List only actives findings',
-                            action='store_true', dest='active')
+                              action='store_true', dest='active')
         optional.add_argument('--inactive', help='List only inactives findings',
-                            action='store_false', dest='active')
+                              action='store_false', dest='active')
         optional.add_argument('--valid', help='List only valid findings (true-positives)',
-                            action='store_true', dest='valid')
+                              action='store_true', dest='valid')
         optional.add_argument('--false_positives', help='List only false-positives findings',
-                            action='store_false', dest='valid')
+                              action='store_false', dest='valid')
         optional.add_argument('--in_scope', help='List only findings in-scope',
                             action='store_true', dest='scope')
         optional.add_argument('--out_of_scope', help='List only findings out-of-scope',
