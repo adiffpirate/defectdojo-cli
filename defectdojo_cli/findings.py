@@ -6,7 +6,7 @@ import requests
 from defectdojo_cli.util import Util
 
 class Findings(object):
-    def __init__(self):
+    def parse_cli_args(self):
         parser = argparse.ArgumentParser(
             description='Perform <sub_command> related to findings on DefectDojo',
             usage='''defectdojo findings <sub_command> [<args>]
