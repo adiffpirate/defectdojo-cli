@@ -7,7 +7,7 @@ from unittest.mock import PropertyMock
 from defectdojo_cli.util import Util
 
 class Engagements(object):
-    def __init__(self):
+    def parse_cli_args(self):
         parser = argparse.ArgumentParser(
             description='Perform <sub_command> related to engagements on DefectDojo',
             usage='''defectdojo engagements <sub_command> [<args>]

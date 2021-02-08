@@ -14,6 +14,6 @@ setup(
     packages=['defectdojo_cli'],
     install_requires=['requests'],
     entry_points = {
-        'console_scripts': ['defectdojo = defectdojo_cli.__main__:DefectDojoCLI'],
+        'console_scripts': ['defectdojo = defectdojo_cli.__main__:main'],
     }
 )
