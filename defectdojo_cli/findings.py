@@ -31,29 +31,38 @@ class Findings(object):
             print(scanner)
         exit(0)
 
-    def upload(self, **kwargs):
-        args = dict()
-        # Parse arguments
-        for key,value in kwargs.items():
-            args[key] = value
+    def _print_scanners(self):
+        self.print_scanners()
+
+    def upload(self, url, api_key, result_file, scanner, engagement_id, lead_id, active=None, verified=None,
+               scan_date=None, min_severity=None, tag=None, **kwargs):
         # Prepare JSON data to be send
         request_json = dict()
-        API_URL = args['url']+'/api/v2'
+        API_URL = url+'/api/v2'
         IMPORT_SCAN_URL = API_URL+'/import-scan/'
-        request_json['scan_date'] = datetime.now().strftime('%Y-%m-%d')
-        request_json['scan_type'] = args['scanner']
-        request_json['verified'] = args['verified']
-        request_json['engagement'] = args['engagement_id']
-        request_json['lead'] = args['lead_id']
-        request_json['active'] = args['active']
-        request_json['minimum_severity'] = args['min_severity']
-        if args['tag'] is not None:
-            request_json['tags'] = args['tag']
+        if scan_date is not None:
+            request_json['scan_date'] = scan_date
+        if scanner is not None:
+            request_json['scan_type'] = scanner
+        if verified is not None:
+            request_json['verified'] = verified
+        if engagement_id is not None:
+            request_json['engagement'] = engagement_id
+        if lead_id is not None:
+            request_json['lead'] = lead_id
+        if active is not None:
+            request_json['active'] = active
+        if min_severity is not None:
+            request_json['minimum_severity'] = min_severity
+        if tag is not None:
+            request_json['tags'] = tag
+
         # Prepare file data to be send
         files = dict()
-        files['file'] = open(args['result_file'])
+        files['file'] = open(result_file)
+
         # Make request
-        response = Util().request_apiv2('POST', IMPORT_SCAN_URL, args['api_key'], files=files, data=request_json)
+        response = Util().request_apiv2('POST', IMPORT_SCAN_URL, api_key, files=files, data=request_json)
         return response
 
     def _upload(self):
@@ -69,6 +78,8 @@ class Findings(object):
         required.add_argument('--api_key', help='API v2 Key', required=True)
         required.add_argument('--engagement_id', help='Engagement ID', required=True)
         required.add_argument('--lead_id', help='ID of the user conducting the operation', required=True)
+        optional.add_argument('--scan_date', help='Date the scan was perfomed (default=TODAY)',
+                              metavar='YYYY-MM-DD', default=datetime.now().strftime('%Y-%m-%d'))
         optional.add_argument('--active', help='Mark vulnerabilities found as active (default)',
                               action='store_true', dest='active')
         optional.add_argument('--inactive', help='Mark vulnerabilities found as inactive',
@@ -89,10 +100,12 @@ class Findings(object):
         parser._action_groups.append(optional)
         # Parse out arguments ignoring the first three (because we're inside a sub-command)
         args = vars(parser.parse_args(sys.argv[3:]))
+
         # Upload results
         response = self.upload(**args)
         # Load upload response as JSON
         upload_out = json.loads(response.text)
+
         # If --note flag was passed
         if args['note'] is not None:
             # Get the findings that were uploaded 
@@ -114,6 +127,7 @@ class Findings(object):
             for uploaded_finding_id in uploaded_findings_ids:
                 tmp_args['finding_id'] = uploaded_finding_id
                 self.add_note(**tmp_args)
+
         # Auto close open findings (if requested)
         if response.status_code == 201: # Success
             if args['auto_close']: # If --auto-close flag was used
@@ -168,99 +182,63 @@ class Findings(object):
                     for closed_finding_id in closed_findings_ids:
                         tmp_args['finding_id'] = closed_finding_id
                         self.add_note(**tmp_args)
+
         # Pretty print JSON response
         Util().default_output(response, sucess_status_code=201)
 
-    def list(self, **kwargs):
-        args = dict()
-        # Parse arguments
-        for key,value in kwargs.items():
-            args[key] = value
+    def list(self, url, api_key, finding_id=None, test_id=None, product_id=None, engagement_id=None,
+             scanner=None, active=None, valid=None, scope=None, limit=None, **kwargs):
         # Create parameters to be requested
         request_params = dict()
-        API_URL = args['url']+'/api/v2'
+        API_URL = url+'/api/v2'
         FINDINGS_URL = API_URL+'/findings/'
-
-        try:
-            if args['id'] is not None:
-                request_params['id'] = args['id']
-        except:
-            pass
-
-        try:
-            if args['test_id'] is not None:
-                request_params['test'] = args['test_id']
-        except:
-            pass
-
-        try:
-            if args['product_id'] is not None:
-                request_params['test__engagement__product'] = args['product_id']
-        except:
-            pass
-
-        try:
-            if args['engagement_id'] is not None:
-                request_params['test__engagement'] = args['engagement_id']
-        except:
-            pass
-
-        try:
-            if args['scanner'] is not None:
-                # In order to filter scanner we need to get its ID via API
-                temp_params = dict()
-                temp_params['name'] = args['scanner']
-                # Make a get request to /test_types passing the scanner as parameter
-                temp_response = Util().request_apiv2('GET', API_URL+'/test_types/', args['api_key'], params=temp_params)
-                # Tranform the above response in json and get the id
-                scanner_id = json.loads(temp_response.text)['results'][0]['id']
-                # Add to request_params
-                request_params['test__test_type'] = scanner_id
-        except:
-            pass
-
-        try:
-            if args['active'] is not None:
-                if args['active'] is True:
-                    request_params['active'] = 2
-                if args['active'] is False:
-                    request_params['active'] = 3
-        except:
-            pass
-
-        try:
-            if args['valid'] is not None:
-                if args['valid'] is True:
-                    request_params['false_p'] = 3
-                if args['valid'] is False:
-                    request_params['false_p'] = 2
-        except:
-            pass
-
-        try:
-            if args['scope'] is not None:
-                if args['scope'] is True:
-                    request_params['out_of_scope'] = 3
-                if args['scope'] is False:
-                    request_params['out_of_scope'] = 2
-        except:
-            pass
-
-        try:
-            if args['limit'] is not None:
-                request_params['limit'] = args['limit']
-            else:
-                # Make a request to API getting only one finding to retrieve the total amount of findings
-                temp_params = args.copy()
-                temp_params['limit'] = 1
-                temp_response = self.list(**temp_params)
-                limit = int(json.loads(temp_response.text)['count'])
-                request_params['limit'] = limit
-        except:
-            pass
+        if finding_id is not None:
+            request_params['id'] = finding_id
+        if test_id is not None:
+            request_params['test'] = test_id
+        if product_id is not None:
+            request_params['test__engagement__product'] = product_id
+        if engagement_id is not None:
+            request_params['test__engagement'] = engagement_id
+        if scanner is not None:
+        # In order to filter scanner we need to get its ID via API
+            temp_params = dict()
+            temp_params['name'] = scanner
+            # Make a get request to /test_types passing the scanner as parameter
+            temp_response = Util().request_apiv2('GET', API_URL+'/test_types/', api_key, params=temp_params)
+            # Tranform the above response in json and get the id
+            scanner_id = json.loads(temp_response.text)['results'][0]['id']
+            # Add to request_params
+            request_params['test__test_type'] = scanner_id
+        if active is not None:
+            if active is True:
+                request_params['active'] = 2
+            elif active is False:
+                request_params['active'] = 3
+        if valid is not None:
+            if valid is True:
+                request_params['false_p'] = 3
+            elif valid is False:
+                request_params['false_p'] = 2
+        if scope is not None:
+            if scope is True:
+                request_params['out_of_scope'] = 3
+            elif scope is False:
+                request_params['out_of_scope'] = 2
+        if limit is not None:
+            request_params['limit'] = limit
+        else:
+            # Make a request to API getting only one finding to retrieve the total amount of findings
+            temp_params = request_params.copy()
+            temp_params['url'] = url
+            temp_params['api_key'] = api_key
+            temp_params['limit'] = 1
+            temp_response = self.list(**temp_params)
+            limit = int(json.loads(temp_response.text)['count'])
+            request_params['limit'] = limit
 
         # Make request
-        response = Util().request_apiv2('GET', FINDINGS_URL, args['api_key'], params=request_params)
+        response = Util().request_apiv2('GET', FINDINGS_URL, api_key, params=request_params)
         return response
 
     def _list(self):
@@ -301,8 +279,15 @@ class Findings(object):
         parser._action_groups.append(optional)
         # Parse out arguments ignoring the first three (because we're inside a sub-command)
         args = vars(parser.parse_args(sys.argv[3:]))
+
+        # Adjust args
+        if args['id'] is not None:
+            # Rename key from 'id' to 'finding_id' to match the argument of self.list
+            args['finding_id'] = args.pop('id')
+
         # Get findings
         response = self.list(**args)
+
         # Print output
         json_out = json.loads(response.text)
         if response.status_code == 200: # Sucess
@@ -368,23 +353,20 @@ class Findings(object):
             print(pretty_json_out)
             exit(1)
 
-    def update(self, **kwargs):
-        args = dict()
-        # Parse arguments
-        for key,value in kwargs.items():
-            args[key] = value
+    def update(self, url, api_key, finding_id, active=None, mitigated=None, **kwargs):
         # Prepare JSON data to be send
         request_json = dict()
-        API_URL = args['url']+'/api/v2'
+        API_URL = url+'/api/v2'
         FINDINGS_URL = API_URL+'/findings/'
-        FINDINGS_ID_URL = FINDINGS_URL+str(args['finding_id'])+'/'
-        if args['active'] is not None:
-            request_json['active'] = args['active']
-        if args['mitigated'] is not None:
-            request_json['is_Mitigated'] = args['mitigated']
+        FINDINGS_ID_URL = FINDINGS_URL+str(finding_id)+'/'
+        if active is not None:
+            request_json['active'] = active
+        if mitigated is not None:
+            request_json['is_Mitigated'] = mitigated
         request_json = json.dumps(request_json)
+
         # Make the request
-        response = Util().request_apiv2('PATCH', FINDINGS_ID_URL, args['api_key'], data=request_json)
+        response = Util().request_apiv2('PATCH', FINDINGS_ID_URL, api_key, data=request_json)
         return response
 
     def _update(self):
@@ -403,6 +385,8 @@ class Findings(object):
         parser._action_groups.append(optional)
         # Parse out arguments ignoring the first three (because we're inside a sub_command)
         args = vars(parser.parse_args(sys.argv[3:]))
+
+        # Adjust args
         if args['active'] is not None:
             if args['active'] == 'true':
                 args['active'] = True
@@ -413,20 +397,24 @@ class Findings(object):
                 args['mitigated'] = True
             else:
                 args['mitigated'] = False
+
         # Update finding
         response = self.update(**args)
+
         # Pretty print JSON response
         Util().default_output(response, sucess_status_code=200)
 
-    def close(self, **kwargs):
-        args = dict()
-        # Parse arguments
-        for key,value in kwargs.items():
-            args[key] = value
-        args['active'] = False
-        args['mitigated'] = True
+    def close(self, url, api_key, finding_id, **kwargs):
+        # Prepare parameters
+        request_params = dict()
+        request_params['url'] = url
+        request_params['api_key'] = api_key
+        request_params['finding_id'] = finding_id
+        request_params['active'] = False
+        request_params['mitigated'] = True
+
         # Call the update method with active=False and mitigated=True
-        response = self.update(**args)
+        response = self.update(**request_params)
         return response
 
     def _close(self):
@@ -439,17 +427,20 @@ class Findings(object):
         required.add_argument('--api_key', help='API v2 Key', required=True)
         # Parse out arguments ignoring the first three (because we're inside a sub_command)
         args = vars(parser.parse_args(sys.argv[3:]))
+
         # Close finding
         response = self.close(**args)
+
         # Pretty print JSON response
         Util().default_output(response, sucess_status_code=200)
 
-    def add_note(self, url, api_key, finding_id, entry, private=None, note_type=None):
+    def add_note(self, url, api_key, finding_id, entry, private=None, note_type=None, **kwargs):
         # Prepare parameters
         API_URL = url+'/api/v2/'
         FINDINGS_URL = API_URL+'findings/'
         FINDINGS_ID_URL = FINDINGS_URL+str(finding_id)+'/'
         FINDINGS_ID_NOTES_URL = FINDINGS_ID_URL+'notes/'
+
         # Prepare JSON data to be send
         request_json = dict()
         request_json['entry'] = entry
@@ -458,6 +449,7 @@ class Findings(object):
         if note_type is not None:
             request_json['note_type'] = note_type
         request_json = json.dumps(request_json)
+
         # Make the request
         response = Util().request_apiv2('POST', FINDINGS_ID_NOTES_URL, api_key, data=request_json)
         return response
