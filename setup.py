@@ -5,9 +5,9 @@ except ImportError:
 
 setup(
     name='defectdojo_cli',
-    version='0.1.3.1',
+    version='0.2',
     description='CLI Wrapper for DefectDojo using APIv2',
-    url='https://github.com/adiffpirate/defectdojo_cli',
+    url='https://github.com/adiffpirate/defectdojo-cli',
     author='Luiz Paulo Souto Monteiro',
     author_email='lpsmonteiro2@gmail.com',
     license='MIT',
