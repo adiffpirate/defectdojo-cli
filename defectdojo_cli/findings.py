@@ -169,8 +169,11 @@ class Findings(object):
                     tmp_args['finding_id'] = open_finding_id
                     self.close(**tmp_args)
                 closed_findings_ids = open_findings_ids
-                # Add the list of closed findings ids to the output
-                upload_out['auto_closed_findings'] = list(closed_findings_ids)
+                # Add a list of urls indicating closed findings to the output
+                closed_findings_urls = set()
+                for closed_finding_id in closed_findings_ids:
+                    closed_findings_urls.add(args['url']+'/finding/'+str(closed_finding_id))
+                upload_out['auto_closed_findings'] = list(closed_findings_urls)
                 type(response).text = PropertyMock(return_value=json.dumps(upload_out))
                 # If the --ac_note was passed
                 if args['ac_note'] is not None:
