@@ -336,7 +336,7 @@ class Findings(object):
                         table['URL'].append(args['url']+'/finding/'+str(finding['id']))
                     print(tabulate(table, headers='keys', tablefmt='fancy_grid'))
                     # Exit
-                    if args['fail_if_found'] is not None: # If --fail_if_found flag was passed
+                    if args['fail_if_found']: # If --fail_if_found flag was passed
                         exit(1)
                     else:
                         exit(0)
