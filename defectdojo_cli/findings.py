@@ -4,6 +4,7 @@ import sys
 import argparse
 import requests
 from unittest.mock import PropertyMock
+from tabulate import tabulate
 from defectdojo_cli.util import Util
 
 class Findings(object):
@@ -298,58 +299,49 @@ class Findings(object):
                 # Pretty print output in json
                 pretty_json_out = json.dumps(json_out, indent=4)
                 print(pretty_json_out)
-            else:
-                # Print output in a more human readable way
-                criticals = []
-                highs = []
-                mediums = []
-                lows = []
-                infos = []
-                for finding in json_out['results']:
-                    if finding['severity'] == 'Critical':
-                        criticals.append(finding)
-                    if finding['severity'] == 'High':
-                        highs.append(finding)
-                    if finding['severity'] == 'Medium':
-                        mediums.append(finding)
-                    if finding['severity'] == 'Low':
-                        lows.append(finding)
-                    if finding['severity'] == 'Info':
-                        infos.append(finding)
-                if criticals:
-                    print('#################### CRITICAL ####################')
-                    for finding in criticals:
-                        print('\n'+str(finding['title']))
-                        print(args['url']+'/finding/'+str(finding['id']))
-                    print('\n\n')
-                if highs:
-                    print('#################### HIGH ####################')
-                    for finding in highs:
-                        print('\n'+str(finding['title']))
-                        print(args['url']+'/finding/'+str(finding['id']))
-                    print('\n\n')
-                if mediums:
-                    print('#################### MEDIUM ####################')
-                    for finding in mediums:
-                        print('\n'+str(finding['title']))
-                        print(args['url']+'/finding/'+str(finding['id']))
-                    print('\n\n')
-                if lows:
-                    print('#################### LOW ####################')
-                    for finding in lows:
-                        print('\n'+str(finding['title']))
-                        print(args['url']+'/finding/'+str(finding['id']))
-                    print('\n\n')
-                if infos:
-                    print('#################### INFO ####################')
-                    for finding in infos:
-                        print('\n'+str(finding['title']))
-                        print(args['url']+'/finding/'+str(finding['id']))
-                    print('\n\n')
-            if args['fail_if_found'] is not None and json_out['count'] > 0: # If --fail_if_found flag was passed
-                exit(1)
-            else:
-                exit(0)
+            else: # Print output in a more human readable way
+                # Print findings amount
+                findings_amount = json_out['count']
+                print('\nFindings amount: '+str(json_out['count']))
+                if findings_amount > 0:
+                    # Print components and its version (usefull for Software Composition Analysis)
+                    components = set()
+                    for finding in json_out['results']:
+                        if finding['component_name'] is not None:
+                            components.add(finding['component_name']+' v'+finding['component_version'])
+                    if components:
+                        print('\nComponents:')
+                        for component in sorted(components):
+                            print(component)
+                    # Print link to the list of findings on DefectDojo
+                    if args['product_id'] is not None: # If a product id was passed
+                        # Print link specific for that product
+                        findings_list_url = response.request.url.replace('api/v2/findings/', 'product/'+args['product_id']+'/finding/all') # Mount URL using the previous API call as base
+                        print('\n\nYou can also view this list on DefectDojo:\n'+findings_list_url) # Print URL
+                    else:
+                        # Print general link
+                        findings_list_url = response.request.url.replace('api/v2/findings/', 'finding') # Mount URL using the previous API call as base
+                        print('\n\nYou can also view this list on DefectDojo:\n'+findings_list_url) # Print URL
+                    # Print findings using tabulate (https://pypi.org/project/tabulate)
+                    table = dict()
+                    table['Severity'] = list()
+                    table['Title'] = list()
+                    table['URL'] = list()
+                    for finding in json_out['results']:
+                        table['Severity'].append(finding['severity'])
+                        if len(finding['title']) <= 50: # Truncate title bigger then 50 chars
+                            table['Title'].append(finding['title'])
+                        else:
+                            table['Title'].append(finding['title'][:50]+'...')
+                        table['URL'].append(args['url']+'/finding/'+str(finding['id']))
+                    print(tabulate(table, headers='keys', tablefmt='fancy_grid'))
+                    # Exit
+                    if args['fail_if_found'] is not None: # If --fail_if_found flag was passed
+                        exit(1)
+                    else:
+                        exit(0)
+                else:
+                    exit(0)
         else: # Failure
             # Pretty print output in json
             pretty_json_out = json.dumps(json_out, indent=4)
