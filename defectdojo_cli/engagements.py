@@ -24,9 +24,10 @@ class Engagements(object):
         # Use dispatch pattern to invoke method with same name (that starts with _)
         getattr(self, '_'+args.sub_command)()
 
-    def create(self, url, api_key, name, desc, product_id, lead_id, start_date=None, end_date=None,
-               engagement_type=None, status=None, repo_url=None, branch_tag=None, product_version=None,
-               **kwargs):
+    def create(self, url, api_key, name, desc, product_id, lead_id,
+               start_date=None, end_date=None, engagement_type=None,
+               status=None, build_id=None, repo_url=None, branch_tag=None,
+               commit_hash=None, product_version=None, tracker=None, **kwargs):
         # Prepare JSON data to be send
         request_json = dict()
         API_URL = url+'/api/v2'
@@ -43,12 +44,18 @@ class Engagements(object):
             request_json['engagement_type'] = engagement_type
         if status is not None:
             request_json['status'] = status
+        if build_id is not None:
+            request_json['build_id'] = build_id
         if repo_url is not None:
             request_json['source_code_management_uri'] = repo_url
         if branch_tag is not None:
             request_json['branch_tag'] = branch_tag
+        if commit_hash is not None:
+            request_json['commit_hash'] = commit_hash
         if product_version is not None:
             request_json['version'] = product_version
+        if tracker is not None:
+            request_json['tracker'] = tracker
         request_json = json.dumps(request_json)
 
         # Make the request
@@ -61,27 +68,49 @@ class Engagements(object):
                                          usage='defectdojo engagements create [<args>]')
         optional = parser._action_groups.pop()
         required = parser.add_argument_group('required arguments')
-        required.add_argument('--url', help='DefectDojo URL', required=True)
-        required.add_argument('--api_key', help='API v2 Key', required=True)
-        required.add_argument('--name', help='Engagement name', required=True)
-        required.add_argument('--desc', help='Engagement description', required=True, metavar='DESCRIPTION')
+        required.add_argument('--url',
+                              help='DefectDojo URL', required=True)
+        required.add_argument('--api_key',
+                              help='API v2 Key', required=True)
+        required.add_argument('--name',
+                              help='Engagement name', required=True)
+        required.add_argument('--desc',
+                              help='Engagement description',
+                              required=True, metavar='DESCRIPTION')
         required.add_argument('--product_id',
                               help='ID of the product on which the engagement will be created',
                               required=True)
-        required.add_argument('--lead_id', help='ID of the user responsible for this engagement', required=True)
-        optional.add_argument('--start_date', help='Engagement starting date (default=TODAY)',
-                            metavar='YYYY-MM-DD', default=datetime.now().strftime('%Y-%m-%d'))
-        optional.add_argument('--end_date', help='Engagement ending date (default=TODAY)',
-                            metavar='YYYY-MM-DD', default=datetime.now().strftime('%Y-%m-%d'))
-        optional.add_argument('--type', help='Engagement type (default = "CI/CD")',
-                            choices=['Interactive', 'CI/CD'], default='CI/CD')
-        optional.add_argument('--status', help='Engagement status (default = "In Progress")',                                                     choices=['Not Started', 'Blocked', 'Cancelled', 'Completed', 'In Progress',
-                                     'On Hold', 'Waiting for Resource'],
-                            default='In Progress')
-        optional.add_argument('--repo_url', help='Link to source code')
-        optional.add_argument('--branch_tag', help='Tag or branch of the product the engagement tested',
-                            metavar='TAG_OR_BRANCH')
-        optional.add_argument('--product_version', help='Version of the product the engagement tested')
+        required.add_argument('--lead_id',
+                              help='ID of the user responsible for this engagement',
+                              required=True)
+        optional.add_argument('--start_date',
+                              help='Engagement starting date (default=TODAY)',
+                              metavar='YYYY-MM-DD', default=datetime.now().strftime('%Y-%m-%d'))
+        optional.add_argument('--end_date',
+                              help='Engagement ending date (default=TODAY)',
+                              metavar='YYYY-MM-DD', default=datetime.now().strftime('%Y-%m-%d'))
+        optional.add_argument('--type',
+                              help='Engagement type (default = "CI/CD")',
+                              choices=['Interactive', 'CI/CD'], default='CI/CD')
+        optional.add_argument('--status',
+                              help='Engagement status (default = "In Progress")',
+                              choices=['Not Started', 'Blocked', 'Cancelled',
+                                       'Completed', 'In Progress', 'On Hold',
+                                       'Waiting for Resource'],
+                              default='In Progress')
+        optional.add_argument('--build_id',
+                              help='Build ID')
+        optional.add_argument('--repo_url',
+                              help='Link to source code management')
+        optional.add_argument('--branch_tag',
+                              help='Tag or branch of the product the engagement tested',
+                              metavar='TAG_OR_BRANCH')
+        optional.add_argument('--commit_hash',
+                              help='Commit HASH')
+        optional.add_argument('--product_version',
+                              help='Version of the product the engagement tested')
+        optional.add_argument('--tracker',
+                              help='Link to epic or ticket system with changes to version.')
         parser._action_groups.append(optional)
         # Parse out arguments ignoring the first three (because we're inside a sub_command)
         args = vars(parser.parse_args(sys.argv[3:]))
