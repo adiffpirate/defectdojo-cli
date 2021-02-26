@@ -35,8 +35,9 @@ class Findings(object):
     def _print_scanners(self):
         self.print_scanners()
 
-    def upload(self, url, api_key, result_file, scanner, engagement_id, lead_id, active=None, verified=None,
-               scan_date=None, min_severity=None, tag=None, **kwargs):
+    def upload(self, url, api_key, result_file, scanner, engagement_id, lead_id,
+               active=None, verified=None, scan_date=None, min_severity=None,
+               tag=None, test_type=None, env=None, auto_close=None, **kwargs):
         # Prepare JSON data to be send
         request_json = dict()
         API_URL = url+'/api/v2'
@@ -57,13 +58,20 @@ class Findings(object):
             request_json['minimum_severity'] = min_severity
         if tag is not None:
             request_json['tags'] = tag
+        if test_type is not None:
+            request_json['test_type'] = test_type
+        if env is not None:
+            request_json['environment'] = env
+        if auto_close is not None:
+            request_json['close_old_findings'] = True
 
         # Prepare file data to be send
         files = dict()
         files['file'] = open(result_file)
 
         # Make request
-        response = Util().request_apiv2('POST', IMPORT_SCAN_URL, api_key, files=files, data=request_json)
+        response = Util().request_apiv2('POST', IMPORT_SCAN_URL, api_key,
+                                        files=files, data=request_json)
         return response
 
     def _upload(self):
@@ -79,7 +87,9 @@ class Findings(object):
         required.add_argument('--api_key', help='API v2 Key', required=True)
         required.add_argument('--engagement_id', help='Engagement ID', required=True)
         required.add_argument('--lead_id', help='ID of the user conducting the operation', required=True)
-        optional.add_argument('--scan_date', help='Date the scan was perfomed (default=TODAY)',
+        optional.add_argument('--test_type', help='Test type / title (default = scanner name)')
+        optional.add_argument('--env', help='Environment')
+        optional.add_argument('--scan_date', help='Date the scan was perfomed (default = TODAY)',
                               metavar='YYYY-MM-DD', default=datetime.now().strftime('%Y-%m-%d'))
         optional.add_argument('--active', help='Mark vulnerabilities found as active (default)',
                               action='store_true', dest='active')
@@ -93,11 +103,17 @@ class Findings(object):
         optional.add_argument('--min_severity', help='Ignore findings below this severity (default = "Low")',
                               choices=['Informational', 'Low', 'Medium', 'High', 'Critical'], default='Low')
         optional.add_argument('--tag', help='Scanner tag (can be used multiple times)', action='append')
-        optional.add_argument('--note', help='Add the string passed to this flag as a note to each finding uploaded')
-        optional.add_argument('--auto_close', help='Close all the open findings from --scanner and '
-                              +'--engagement_id that are not listed in this upload (default = False)',
-                              action='store_true', default=False)
-        optional.add_argument('--ac_note', help='Add the string passed to this flag as a note to each finding closed by --auto_close')
+        optional.add_argument('--note',
+                              help='Add the string passed to this flag as a'
+                                   'note to each finding uploaded'
+                                   '(can have a big impact on performance'
+                                   'depending on the amount of findings'
+                                   'uploaded)')
+        optional.add_argument('--auto_close',
+                              help='Close all open findings from the same '
+                                  +'--test_type that are not listed on '
+                                  +'this upload (default = False)',
+                              action='store_true')
         parser._action_groups.append(optional)
         # Parse out arguments ignoring the first three (because we're inside a sub-command)
         args = vars(parser.parse_args(sys.argv[3:]))
@@ -129,69 +145,11 @@ class Findings(object):
                 tmp_args['finding_id'] = uploaded_finding_id
                 self.add_note(**tmp_args)
 
-        # Auto close open findings (if requested)
-        if response.status_code == 201: # Success
-            if args['auto_close']: # If --auto-close flag was used
-                # Get all the open findings from this engagement and scanner
-                tmp_args = dict()
-                tmp_args['url'] = args['url']
-                tmp_args['api_key'] = args['api_key']
-                tmp_args['engagement_id'] = args['engagement_id']
-                tmp_args['scanner'] = args['scanner']
-                tmp_args['active'] = True
-                tmp_response = self.list(**tmp_args)
-                open_findings_out = json.loads(tmp_response.text)
-                # Create a list with all the open findings IDs
-                open_findings_ids = set()
-                for open_finding in open_findings_out['results']:
-                    open_findings_ids.add(open_finding['id'])
-                # Get the findings that were uploaded 
-                tmp_args = dict()
-                tmp_args['url'] = args['url']
-                tmp_args['api_key'] = args['api_key']
-                tmp_args['test_id'] = upload_out['test'] # Get the test ID from the upload output
-                tmp_response = self.list(**tmp_args)
-                uploaded_findings_out = json.loads(tmp_response.text)
-                # Create a list with all the uploaded findings IDs
-                uploaded_findings_ids = set()
-                for uploaded_finding in uploaded_findings_out['results']:
-                    uploaded_findings_ids.add(uploaded_finding['id'])
-                    # If finding is a duplicate
-                    if uploaded_finding['duplicate_finding'] is not None:
-                        # Also add the original finding id to the list
-                        uploaded_findings_ids.add(uploaded_finding['duplicate_finding'])
-                # Remove the uploaded findings id from the open findings id list
-                open_findings_ids = open_findings_ids - uploaded_findings_ids
-                # Close the remain open findings
-                tmp_args = dict()
-                tmp_args['url'] = args['url']
-                tmp_args['api_key'] = args['api_key']
-                for open_finding_id in open_findings_ids:
-                    tmp_args['finding_id'] = open_finding_id
-                    self.close(**tmp_args)
-                closed_findings_ids = open_findings_ids
-                # Add a list of urls indicating closed findings to the output
-                closed_findings_urls = set()
-                for closed_finding_id in closed_findings_ids:
-                    closed_findings_urls.add(args['url']+'/finding/'+str(closed_finding_id))
-                upload_out['auto_closed_findings'] = list(closed_findings_urls)
-                type(response).text = PropertyMock(return_value=json.dumps(upload_out))
-                # If the --ac_note was passed
-                if args['ac_note'] is not None:
-                    tmp_args = dict()
-                    tmp_args['url'] = args['url']
-                    tmp_args['api_key'] = args['api_key']
-                    tmp_args['entry'] = args['ac_note']
-                    # Add note to each closed finding
-                    for closed_finding_id in closed_findings_ids:
-                        tmp_args['finding_id'] = closed_finding_id
-                        self.add_note(**tmp_args)
-
         # Pretty print JSON response
         Util().default_output(response, sucess_status_code=201)
 
     def list(self, url, api_key, finding_id=None, test_id=None, product_id=None, engagement_id=None,
-             scanner=None, active=None, valid=None, scope=None, limit=None, **kwargs):
+             test_type=None, active=None, closed=None, valid=None, scope=None, limit=None, **kwargs):
         # Create parameters to be requested
         request_params = dict()
         API_URL = url+'/api/v2'
@@ -204,21 +162,23 @@ class Findings(object):
             request_params['test__engagement__product'] = product_id
         if engagement_id is not None:
             request_params['test__engagement'] = engagement_id
-        if scanner is not None:
-        # In order to filter scanner we need to get its ID via API
+        if test_type is not None:
+        # In order to filter test_type we need to get its ID via API
             temp_params = dict()
-            temp_params['name'] = scanner
-            # Make a get request to /test_types passing the scanner as parameter
+            temp_params['name'] = test_type
+            # Make a get request to /test_types passing the test_type as parameter
             temp_response = Util().request_apiv2('GET', API_URL+'/test_types/', api_key, params=temp_params)
             # Tranform the above response in json and get the id
-            scanner_id = json.loads(temp_response.text)['results'][0]['id']
+            test_type_id = json.loads(temp_response.text)['results'][0]['id']
             # Add to request_params
-            request_params['test__test_type'] = scanner_id
+            request_params['test__test_type'] = test_type_id
         if active is not None:
             if active is True:
                 request_params['active'] = 2
             elif active is False:
                 request_params['active'] = 3
+        if closed:
+            request_params['is_Mitigated'] = True
         if valid is not None:
             if valid is True:
                 request_params['false_p'] = 3
@@ -257,12 +217,13 @@ class Findings(object):
         optional.add_argument('--test_id', help='Filter by test')
         optional.add_argument('--product_id', help='Filter by product')
         optional.add_argument('--engagement_id', help='Filter by engagement')
-        optional.add_argument('--scanner', help='Filter by scanner',
-                              choices=Util().ACCEPTED_SCANS, metavar='SCANNER')
+        optional.add_argument('--test_type', help='Filter by test type')
         optional.add_argument('--active', help='List only actives findings',
                               action='store_true', dest='active')
         optional.add_argument('--inactive', help='List only inactives findings',
                               action='store_false', dest='active')
+        optional.add_argument('--closed', help='List only closed/mitigated fidings',
+                              action='store_true')
         optional.add_argument('--valid', help='List only valid findings (true-positives)',
                               action='store_true', dest='valid')
         optional.add_argument('--false_positives', help='List only false-positives findings',
