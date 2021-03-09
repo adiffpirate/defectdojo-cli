@@ -1,0 +1,68 @@
+CHANGES
+=======
+
+v0.3.1
+------
+
+* Adopted pbr packaging
+* Changed --fail\_if\_found behaviour and increased Findings.list() title size
+
+v0.3.0
+------
+
+* v0.3
+* Added new flags
+* Changed auto\_close logic and added new flags
+* Minor fix
+
+v0.2.3
+------
+
+* v0.2.3
+* Improved Findings.list output
+
+v0.2.2
+------
+
+* Change in auto\_close output
+
+v0.2.1
+------
+
+* Some adjustments
+
+v0.2.0
+------
+
+* v0.2
+* Code refactoring
+* New feature: note and ac\_note at Findings.upload
+* New feature: fail\_if\_found at Findings.list
+* New feature: auto\_close at Findings.upload
+* Added "close" option
+* Fixed "update" option
+* Added "update" option
+* Added filter by test ID to Findings.list() and some minor fixes
+* A little bit more code refactoring
+* Some more code refactoring
+* Code refactoring
+* Fixed version
+* Minor change in human readable output to work with python 2.7 as well
+
+v0.1.3
+------
+
+* Improvements at the "list" command
+
+v0.1.1
+------
+
+* Fixed version
+* Added human readable output and json flag to 'list' command
+
+v0.1.0
+------
+
+* Initial commit
+* Initial commit
+* Initial commit

@@ -2,6 +2,7 @@ import sys
 import argparse
 from defectdojo_cli import Findings
 from defectdojo_cli import Engagements
+from defectdojo_cli import __version__
 
 # Multilevel argparse based on https://chase-seibert.github.io/blog/2014/03/21/python-multilevel-argparse.html
 class DefectDojoCLI(object):
@@ -15,6 +16,7 @@ class DefectDojoCLI(object):
             engagements     Operations related to engagements (engagements --help for more details)
         ''')
         parser.add_argument('command', help='Command to run', choices=['findings', 'engagements'])
+        parser.add_argument('-v', '--version', action='version', version='%(prog)s_cli v' + __version__)
         # Parse_args defaults to [1:] for args, but you need to
         # exclude the rest of the args too, or validation will fail
         args = parser.parse_args(sys.argv[1:2])
