@@ -114,6 +114,7 @@ class Findings(object):
                                   +'--test_type that are not listed on '
                                   +'this upload (default = False)',
                               action='store_true')
+        optional.add_argument('--ac_note')
         parser._action_groups.append(optional)
         # Parse out arguments ignoring the first three (because we're inside a sub-command)
         args = vars(parser.parse_args(sys.argv[3:]))
@@ -239,7 +240,7 @@ class Findings(object):
                               +'(not needed if the --limit flag is not set)')
         optional.add_argument('--fail_if_found',
                               help='Returns a non-zero exit code if any findings are returned (default=false)',
-                              action='store_true', default=False)
+                              default=False, choices=['true', 'false'])
         optional.set_defaults(active=None, valid=None, scope=None)
         parser._action_groups.append(optional)
         # Parse out arguments ignoring the first three (because we're inside a sub-command)
@@ -290,14 +291,14 @@ class Findings(object):
                     table['URL'] = list()
                     for finding in json_out['results']:
                         table['Severity'].append(finding['severity'])
-                        if len(finding['title']) <= 50: # Truncate title bigger then 50 chars
+                        if len(finding['title']) <= 70: # Truncate title bigger then 70 chars
                             table['Title'].append(finding['title'])
                         else:
-                            table['Title'].append(finding['title'][:50]+'...')
+                            table['Title'].append(finding['title'][:70]+'...')
                         table['URL'].append(args['url']+'/finding/'+str(finding['id']))
                     print(tabulate(table, headers='keys', tablefmt='fancy_grid'))
                     # Exit
-                    if args['fail_if_found']: # If --fail_if_found flag was passed
+                    if args['fail_if_found'] == 'true': # If --fail_if_found flag was passed
                         exit(1)
                     else:
                         exit(0)
