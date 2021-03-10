@@ -238,9 +238,13 @@ class Findings(object):
                               help='Number of results to return (by default it gets all the findings)')
         optional.add_argument('--offset', help='The initial index from which to return the results '
                               +'(not needed if the --limit flag is not set)')
-        optional.add_argument('--fail_if_found',
-                              help='Returns a non-zero exit code if any findings are returned (default=false)',
-                              default=False, choices=['true', 'false'])
+        optional.add_argument(
+            '--fail_if_found',
+            help='Returns a non-zero exit code if any findings with the passed '
+                 'severity (or higher) are returned (default = NULL)',
+            default='NULL',
+            choices=['NULL', 'Info', 'Low', 'Medium', 'High', 'Critical']
+        )
         optional.set_defaults(active=None, valid=None, scope=None)
         parser._action_groups.append(optional)
         # Parse out arguments ignoring the first three (because we're inside a sub-command)
@@ -257,15 +261,18 @@ class Findings(object):
         # Print output
         json_out = json.loads(response.text)
         if response.status_code == 200: # Sucess
+
             if args['json'] is True: # If --json flag was passed
                 # Pretty print output in json
                 pretty_json_out = json.dumps(json_out, indent=4)
                 print(pretty_json_out)
+
             else: # Print output in a more human readable way
                 # Print findings amount
                 findings_amount = json_out['count']
                 print('\nFindings amount: '+str(json_out['count']))
                 if findings_amount > 0:
+
                     # Print components and its version (usefull for Software Composition Analysis)
                     components = set()
                     for finding in json_out['results']:
@@ -275,6 +282,7 @@ class Findings(object):
                         print('\nComponents:')
                         for component in sorted(components):
                             print(component)
+
                     # Print link to the list of findings on DefectDojo
                     if args['product_id'] is not None: # If a product id was passed
                         # Print link specific for that product
@@ -284,6 +292,7 @@ class Findings(object):
                         # Print general link
                         findings_list_url = response.request.url.replace('api/v2/findings/', 'finding') # Mount URL using the previous API call as base
                         print('\n\nYou can also view this list on DefectDojo:\n'+findings_list_url) # Print URL
+
                     # Print findings using tabulate (https://pypi.org/project/tabulate)
                     table = dict()
                     table['Severity'] = list()
@@ -297,11 +306,40 @@ class Findings(object):
                             table['Title'].append(finding['title'][:70]+'...')
                         table['URL'].append(args['url']+'/finding/'+str(finding['id']))
                     print(tabulate(table, headers='keys', tablefmt='fancy_grid'))
+
                     # Exit
-                    if args['fail_if_found'] == 'true': # If --fail_if_found flag was passed
-                        exit(1)
-                    else:
-                        exit(0)
+                    if args['fail_if_found'] != 'NULL': # If --fail_if_found flag was passed
+
+                        findings_sev = set(table['Severity'])
+                        # Get maximum severity from listed findings
+                        if 'Info' in findings_sev:
+                            sev_max = 1
+                        if 'Low' in findings_sev:
+                            sev_max = 2
+                        if 'Medium' in findings_sev:
+                            sev_max = 3
+                        if 'High' in findings_sev:
+                            sev_max = 4
+                        if 'Critical' in findings_sev:
+                            sev_max = 5
+
+                        # Parse fail_if_found flag
+                        if args['fail_if_found'] == 'Info':
+                            fail_if_found = 1
+                        if args['fail_if_found'] == 'Low':
+                            fail_if_found = 2
+                        if args['fail_if_found'] == 'Medium':
+                            fail_if_found = 3
+                        if args['fail_if_found'] == 'High':
+                            fail_if_found = 4
+                        if args['fail_if_found'] == 'Critical':
+                            fail_if_found = 5
+
+                        if sev_max >= fail_if_found:
+                            exit(1)
+                        else:
+                            exit(0)
+
                 else:
                     exit(0)
         else: # Failure

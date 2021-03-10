@@ -1,6 +1,11 @@
 CHANGES
 =======
 
+v0.3.2
+------
+
+* Changed --fail\_if\_found behaviour
+
 v0.3.1
 ------
 
