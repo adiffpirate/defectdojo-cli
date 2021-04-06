@@ -37,7 +37,8 @@ class Findings(object):
 
     def upload(self, url, api_key, result_file, scanner, engagement_id, lead_id,
                active=None, verified=None, scan_date=None, min_severity=None,
-               tag=None, test_type=None, env=None, auto_close=None, **kwargs):
+               tag=None, test_type=None, env=None, auto_close=None,
+               skip_duplicates=None, **kwargs):
         # Prepare JSON data to be send
         request_json = dict()
         API_URL = url+'/api/v2'
@@ -64,6 +65,8 @@ class Findings(object):
             request_json['environment'] = env
         if auto_close is not None:
             request_json['close_old_findings'] = True
+        if skip_duplicates is not None:
+            request_json['skip_duplicates'] = True
 
         # Prepare file data to be send
         files = dict()
@@ -114,7 +117,12 @@ class Findings(object):
                                   +'--test_type that are not listed on '
                                   +'this upload (default = False)',
                               action='store_true')
-        optional.add_argument('--ac_note')
+        optional.add_argument(
+            '--skip_duplicates',
+            help='Dont upload duplicates '
+                 '(requires deduplication) (default = False)',
+            action='store_true'
+        )
         parser._action_groups.append(optional)
         # Parse out arguments ignoring the first three (because we're inside a sub-command)
         args = vars(parser.parse_args(sys.argv[3:]))
