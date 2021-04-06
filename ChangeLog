@@ -1,9 +1,16 @@
 CHANGES
 =======
 
+v0.3.3
+------
+
+* Removed ac\_note flag
+* Added skip\_duplicates flag at Findings.upload()
+
 v0.3.2
 ------
 
+* Changed --fail\_if\_found behaviour
 * Changed --fail\_if\_found behaviour
 
 v0.3.1
