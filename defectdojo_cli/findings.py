@@ -123,7 +123,6 @@ class Findings(object):
                  '(requires deduplication) (default = False)',
             action='store_true'
         )
-        optional.add_argument('--ac_note')
         parser._action_groups.append(optional)
         # Parse out arguments ignoring the first three (because we're inside a sub-command)
         args = vars(parser.parse_args(sys.argv[3:]))
