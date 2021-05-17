@@ -1,9 +1,16 @@
 CHANGES
 =======
 
+v0.3.4
+------
+
+* Added tags filter at Findings.list()
+* Added Tests command
+
 v0.3.3
 ------
 
+* v0.3.3
 * Removed ac\_note flag
 * Added skip\_duplicates flag at Findings.upload()
 
