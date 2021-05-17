@@ -29,7 +29,7 @@ class Findings(object):
 
     def upload(self, url, api_key, result_file, scanner, engagement_id, lead_id,
                active=None, verified=None, scan_date=None, min_severity=None,
-               tag=None, test_type=None, env=None, auto_close=None,
+               tag_test=None, test_type=None, env=None, auto_close=None,
                skip_duplicates=None, **kwargs):
         # Prepare JSON data to be send
         request_json = dict()
@@ -49,8 +49,8 @@ class Findings(object):
             request_json['active'] = active
         if min_severity is not None:
             request_json['minimum_severity'] = min_severity
-        if tag is not None:
-            request_json['tags'] = tag
+        if tag_test is not None:
+            request_json['tags'] = tag_test
         if test_type is not None:
             request_json['test_type'] = test_type
         if env is not None:
@@ -103,7 +103,7 @@ class Findings(object):
         optional.set_defaults(active=True, verified=False)
         optional.add_argument('--min_severity', help='Ignore findings below this severity (default = "Low")',
                               choices=['Informational', 'Low', 'Medium', 'High', 'Critical'], default='Low')
-        optional.add_argument('--tag', help='Scanner tag (can be used multiple times)', action='append')
+        optional.add_argument('--tag_test', help='Test tag (can be used multiple times)', action='append')
         optional.add_argument('--note',
                               help='Add the string passed to this flag as a'
                                    'note to each finding uploaded'

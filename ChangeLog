@@ -1,9 +1,15 @@
 CHANGES
 =======
 
+v0.3.6
+------
+
+* Changed --tag to --tag\_test at Findings.upload() to keep consistency
+
 v0.3.5
 ------
 
+* v0.3.5
 * Bugfix
 
 v0.3.4
