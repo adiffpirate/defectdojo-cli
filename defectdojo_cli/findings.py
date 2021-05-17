@@ -230,7 +230,7 @@ class Findings(object):
             # If there's only one test_type
             if len(test_type_ids) == 1:
                 # Add to request_params
-                request_params['test__test_type'] = test_type_id
+                request_params['test__test_type'] = list(test_type_ids)[0]
             else:
                 # Use the appropriate metohd
                 return self.list_multiple_test_types(url, api_key, test_type_ids, **request_params)
