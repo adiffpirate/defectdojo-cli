@@ -1,9 +1,15 @@
 CHANGES
 =======
 
+v0.3.5
+------
+
+* Bugfix
+
 v0.3.4
 ------
 
+* v0.3.4
 * Added tags filter at Findings.list()
 * Added Tests command
 
