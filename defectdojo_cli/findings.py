@@ -6,6 +6,7 @@ import requests
 from unittest.mock import PropertyMock
 from tabulate import tabulate
 from defectdojo_cli.util import Util
+from defectdojo_cli.tests import Tests
 
 class Findings(object):
     def parse_cli_args(self):
@@ -18,22 +19,13 @@ class Findings(object):
         list            List findings
         update          Update a finding
         close           Close a finding
-        print_scanners  Print a list of possible entries for the --scanner flag
 ''')
         parser.add_argument('sub_command', help='Sub_command to run',
-                            choices=['upload', 'list', 'update', 'close', 'print_scanners'])
+                            choices=['upload', 'list', 'update', 'close'])
         # Get sub_command
         args = parser.parse_args(sys.argv[2:3])
         # Use dispatch pattern to invoke method with same name (that starts with _)
         getattr(self, '_'+args.sub_command)()
-
-    def print_scanners(self):
-        for scanner in Util().ACCEPTED_SCANS:
-            print(scanner)
-        exit(0)
-
-    def _print_scanners(self):
-        self.print_scanners()
 
     def upload(self, url, api_key, result_file, scanner, engagement_id, lead_id,
                active=None, verified=None, scan_date=None, min_severity=None,
@@ -83,9 +75,15 @@ class Findings(object):
                                          usage='defectdojo findings upload RESULT_FILE [<args>]')
         optional = parser._action_groups.pop()
         required = parser.add_argument_group('required arguments')
-        parser.add_argument('result_file', help='File with the results to be uploaded')
-        required.add_argument('--scanner', help='Type of scanner',
-                              choices=Util().ACCEPTED_SCANS, metavar='SCANNER', required=True)
+        parser.add_argument(
+            'result_file',
+            help='File with the results to be uploaded'
+        )
+        required.add_argument(
+            '--scanner',
+            help='Type of scanner',
+            required=True
+        )
         required.add_argument('--url', help='DefectDojo URL', required=True)
         required.add_argument('--api_key', help='API v2 Key', required=True)
         required.add_argument('--engagement_id', help='Engagement ID', required=True)
@@ -130,7 +128,11 @@ class Findings(object):
         # Upload results
         response = self.upload(**args)
         # Load upload response as JSON
-        upload_out = json.loads(response.text)
+        out_error = False
+        try:
+            upload_out = json.loads(response.text)
+        except:
+            out_error = True
 
         # If --note flag was passed
         if args['note'] is not None:
@@ -155,10 +157,14 @@ class Findings(object):
                 self.add_note(**tmp_args)
 
         # Pretty print JSON response
-        Util().default_output(response, sucess_status_code=201)
+        if not out_error:
+            Util().default_output(response, sucess_status_code=201)
+        else:
+            print(response.text)
 
-    def list(self, url, api_key, finding_id=None, test_id=None, product_id=None, engagement_id=None,
-             test_type=None, active=None, closed=None, valid=None, scope=None, limit=None, **kwargs):
+    def list(self, url, api_key, finding_id=None, test_id=None, product_id=None,
+             engagement_id=None, test_type=None, active=None, closed=None,
+             valid=None, scope=None, limit=None, tag_test=None, tags_operator=None, **kwargs):
         # Create parameters to be requested
         request_params = dict()
         API_URL = url+'/api/v2'
@@ -171,16 +177,6 @@ class Findings(object):
             request_params['test__engagement__product'] = product_id
         if engagement_id is not None:
             request_params['test__engagement'] = engagement_id
-        if test_type is not None:
-        # In order to filter test_type we need to get its ID via API
-            temp_params = dict()
-            temp_params['name'] = test_type
-            # Make a get request to /test_types passing the test_type as parameter
-            temp_response = Util().request_apiv2('GET', API_URL+'/test_types/', api_key, params=temp_params)
-            # Tranform the above response in json and get the id
-            test_type_id = json.loads(temp_response.text)['results'][0]['id']
-            # Add to request_params
-            request_params['test__test_type'] = test_type_id
         if active is not None:
             if active is True:
                 request_params['active'] = 2
@@ -209,6 +205,35 @@ class Findings(object):
             temp_response = self.list(**temp_params)
             limit = int(json.loads(temp_response.text)['count'])
             request_params['limit'] = limit
+        if tag_test:
+            # First get all test types with the tags we're looking for
+            test_type_list = Tests().get_test_type_by_tags(url, api_key, tag_test, tags_operator)
+            # Add them to request parameters
+            #   (so the tags aren't actually passed to request, only their test_types)
+            if test_type is not None:
+                # If a test_type was passed by the user, append it to the list
+                test_type_list = test_type_list + test_type
+            test_type = test_type_list
+        if test_type is not None:
+            # Transform test_type names to IDs
+            test_type_ids = set()
+            for tt in test_type:
+                if type(tt) is str:
+                    temp_params = dict()
+                    temp_params['name'] = tt
+                    # Make a get request to /test_types passing the test_type as parameter
+                    temp_response = Util().request_apiv2('GET', API_URL+'/test_types/', api_key, params=temp_params)
+                    # Tranform the above response in json and get the id
+                    test_type_ids.add(json.loads(temp_response.text)['results'][0]['id'])
+                else:
+                    test_type_ids.add(tt)
+            # If there's only one test_type
+            if len(test_type_ids) == 1:
+                # Add to request_params
+                request_params['test__test_type'] = test_type_id
+            else:
+                # Use the appropriate metohd
+                return self.list_multiple_test_types(url, api_key, test_type_ids, **request_params)
 
         # Make request
         response = Util().request_apiv2('GET', FINDINGS_URL, api_key, params=request_params)
@@ -226,7 +251,11 @@ class Findings(object):
         optional.add_argument('--test_id', help='Filter by test')
         optional.add_argument('--product_id', help='Filter by product')
         optional.add_argument('--engagement_id', help='Filter by engagement')
-        optional.add_argument('--test_type', help='Filter by test type')
+        optional.add_argument(
+            '--test_type',
+            help='Filter by test type (can be used multiple times)',
+            action='append'
+        )
         optional.add_argument('--active', help='List only actives findings',
                               action='store_true', dest='active')
         optional.add_argument('--inactive', help='List only inactives findings',
@@ -252,6 +281,17 @@ class Findings(object):
                  'severity (or higher) are returned (default = NULL)',
             default='NULL',
             choices=['NULL', 'Info', 'Low', 'Medium', 'High', 'Critical']
+        )
+        optional.add_argument(
+            '--tag_test',
+            help='Test tag (can be used multiple times)',
+            action='append'
+        )
+        optional.add_argument(
+            '--tags_operator',
+            help='Determine the operation to perform when working with multiple tags (default = "union")',
+            default='union',
+            choices=['union', 'intersect']
         )
         optional.set_defaults(active=None, valid=None, scope=None)
         parser._action_groups.append(optional)
@@ -455,4 +495,34 @@ class Findings(object):
 
         # Make the request
         response = Util().request_apiv2('POST', FINDINGS_ID_NOTES_URL, api_key, data=request_json)
+        return response
+
+    def list_multiple_test_types(self, url, api_key, test_types, **kwargs):
+        # Create parameters to be requested
+        request_params = kwargs
+        API_URL = url+'/api/v2'
+        FINDINGS_URL = API_URL+'/findings/'
+
+        # Get list of json responses
+        json_out_list = list()
+        for test_type in test_types:
+            request_params['test__test_type'] = test_type
+            response = Util().request_apiv2('GET', FINDINGS_URL, api_key, params=request_params)
+            json_out_list.append(json.loads(response.text))
+
+        # Merge responses
+        try:
+            json_out_result = json_out_list[0]
+        except:
+            print('Something went wrong while parsing the tags, you sure they exist on DefectDojo?', file=sys.stderr)
+            exit(1)
+        for json_out in json_out_list[1:]:
+            json_out_result['count'] = json_out_result['count'] + json_out['count']
+            json_out_result['results'] = json_out_result['results'] + json_out['results']
+
+        # Make a request passing the list of test_types so that the url at the tool output works properly
+        request_params['test__test_type'] = test_types
+        response = Util().request_apiv2('GET', FINDINGS_URL, api_key, params=request_params)
+        # Replace the response with the one we created
+        type(response).text = PropertyMock(return_value=json.dumps(json_out_result))
         return response
