@@ -27,7 +27,8 @@ class Engagements(object):
     def create(self, url, api_key, name, desc, product_id, lead_id,
                start_date=None, end_date=None, engagement_type=None,
                status=None, build_id=None, repo_url=None, branch_tag=None,
-               commit_hash=None, product_version=None, tracker=None, **kwargs):
+               commit_hash=None, product_version=None, tracker=None,
+               tag=None, **kwargs):
         # Prepare JSON data to be send
         request_json = dict()
         API_URL = url+'/api/v2'
@@ -56,6 +57,8 @@ class Engagements(object):
             request_json['version'] = product_version
         if tracker is not None:
             request_json['tracker'] = tracker
+        if tag is not None:
+            request_json['tags'] = tag
         request_json = json.dumps(request_json)
 
         # Make the request
@@ -111,6 +114,11 @@ class Engagements(object):
                               help='Version of the product the engagement tested')
         optional.add_argument('--tracker',
                               help='Link to epic or ticket system with changes to version.')
+        optional.add_argument(
+            '--tag',
+            help='Engagement tag (can be used multiple times)',
+            action='append'
+        )
         parser._action_groups.append(optional)
         # Parse out arguments ignoring the first three (because we're inside a sub_command)
         args = vars(parser.parse_args(sys.argv[3:]))
