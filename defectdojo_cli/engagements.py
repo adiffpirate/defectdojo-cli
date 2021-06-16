@@ -277,3 +277,34 @@ class Engagements(object):
 
         # Pretty print JSON response
         Util().default_output(response, sucess_status_code=200)
+
+    def reopen(self, url, api_key, engagement_id, **kwargs):
+        # Prepare parameters
+        API_URL = url+'/api/v2'
+        ENGAGEMENTS_URL = API_URL+'/engagements/'
+        ENGAGEMENTS_ID_URL = ENGAGEMENTS_URL+engagement_id
+        ENGAGEMENTS_CLOSE_URL = ENGAGEMENTS_ID_URL+'/reopen/'
+        # Make the request
+        response = Util().request_apiv2('POST', ENGAGEMENTS_CLOSE_URL, api_key)
+        return response
+
+    def _reopen(self):
+        # Read user-supplied arguments
+        parser = argparse.ArgumentParser(description='Reopen an engagement on DefectDojo',
+                                         usage='defectdojo engagements reopen ENGAGEMENT_ID')
+        required = parser.add_argument_group('required arguments')
+        parser.add_argument('engagement_id', help='ID of the engagement to be reopened')
+        required.add_argument('--url', help='DefectDojo URL', required=True)
+        required.add_argument('--api_key', help='API v2 Key', required=True)
+        # Parse out arguments ignoring the first three (because we're inside a sub_command)
+        args = vars(parser.parse_args(sys.argv[3:]))
+
+        # Close engagement
+        response = self.reopen(**args)
+
+        # DefectDojo doesnt has an output when a engagement is successfully reopened so we need to create one
+        if response.status_code == 200:
+            type(response).text = PropertyMock(return_value='{"return": "sucess"}')
+        # Pretty print JSON response
+        Util().default_output(response, sucess_status_code=200)
+
