@@ -17,10 +17,13 @@ class Engagements(object):
         close      Close an engagement (engagements close --help for more details)
         update     Update an engagement (engagements update --help for more details)
 ''')
-        parser.add_argument('sub_command', help='Sub_command to run',
-                            choices=['create', 'close', 'update'])
+        parser.add_argument('sub_command', help='Sub_command to run')
         # Get sub_command
         args = parser.parse_args(sys.argv[2:3])
+        if not hasattr(self, '_'+args.sub_command):
+            print('Unrecognized sub_command')
+            parser.print_help()
+            exit(1)
         # Use dispatch pattern to invoke method with same name (that starts with _)
         getattr(self, '_'+args.sub_command)()
 

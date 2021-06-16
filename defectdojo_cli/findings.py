@@ -20,10 +20,13 @@ class Findings(object):
         update          Update a finding
         close           Close a finding
 ''')
-        parser.add_argument('sub_command', help='Sub_command to run',
-                            choices=['upload', 'list', 'update', 'close'])
+        parser.add_argument('sub_command', help='Sub_command to run')
         # Get sub_command
         args = parser.parse_args(sys.argv[2:3])
+        if not hasattr(self, '_'+args.sub_command):
+            print('Unrecognized sub_command')
+            parser.print_help()
+            exit(1)
         # Use dispatch pattern to invoke method with same name (that starts with _)
         getattr(self, '_'+args.sub_command)()
 
