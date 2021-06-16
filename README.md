@@ -7,7 +7,7 @@ A CLI wrapper for [DefectDojo](https://github.com/DefectDojo/django-DefectDojo)
 
 Simply run:
 ```
-$ python3 -m pip install defectdojo_cli
+$ python3 -m pip install defectdojo-cli
 ```
 
 ## Usage
