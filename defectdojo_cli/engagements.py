@@ -235,3 +235,45 @@ class Engagements(object):
 
         # Pretty print JSON response
         Util().default_output(response, sucess_status_code=200)
+
+    def list(self, url, api_key, name=None, **kwargs):
+        # Create parameters to be requested
+        request_params = dict()
+        API_URL = url+'/api/v2'
+        ENGAGEMENTS_URL = API_URL+'/engagements/'
+        if name is not None:
+            request_params['name'] = name
+
+        # Make the request
+        response = Util().request_apiv2('GET', ENGAGEMENTS_URL, api_key, params=request_params)
+        return response
+
+    def _list(self):
+        # Read user-supplied arguments
+        parser = argparse.ArgumentParser(description='List an engagement on DefectDojo',
+                                         usage='defectdojo engagements list [<args>]')
+        optional = parser._action_groups.pop()
+        required = parser.add_argument_group('required arguments')
+        required.add_argument(
+            '--url',
+            help='DefectDojo URL',
+            required=True
+        )
+        required.add_argument(
+            '--api_key',
+            help='API v2 Key',
+            required=True
+        )
+        optional.add_argument(
+            '--name',
+            help='Engagement name'
+        )
+        parser._action_groups.append(optional)
+        # Parse out arguments ignoring the first three (because we're inside a sub_command)
+        args = vars(parser.parse_args(sys.argv[3:]))
+
+        # Update engagement
+        response = self.list(**args)
+
+        # Pretty print JSON response
+        Util().default_output(response, sucess_status_code=200)
