@@ -15,7 +15,8 @@ class Findings(object):
             usage='''defectdojo findings <sub_command> [<args>]
 
     You can use the following sub_commands:
-        upload          Upload findings (scan results)
+        import          Import findings (scan results)
+        upload          Same as import (deprecated, EOL december/2021)
         list            List findings
         update          Update a finding
         close           Close a finding
@@ -30,7 +31,11 @@ class Findings(object):
         # Use dispatch pattern to invoke method with same name (that starts with _)
         getattr(self, '_'+args.sub_command)()
 
-    def upload(self, url, api_key, result_file, scanner, engagement_id, lead_id,
+    # Backwards compability
+    def _upload(self):
+        self._import()
+
+    def import_(self, url, api_key, result_file, scanner, engagement_id, lead_id,
                active=None, verified=None, scan_date=None, min_severity=None,
                tag_test=None, test_type=None, env=None, auto_close=None,
                skip_duplicates=None, **kwargs):
@@ -72,15 +77,15 @@ class Findings(object):
                                         files=files, data=request_json)
         return response
 
-    def _upload(self):
+    def _import(self):
         # Read user-supplied arguments
-        parser = argparse.ArgumentParser(description='Upload findings (scan results) to DefectDojo',
-                                         usage='defectdojo findings upload RESULT_FILE [<args>]')
+        parser = argparse.ArgumentParser(description='Import findings (scan results) to DefectDojo',
+                                         usage='defectdojo findings import RESULT_FILE [<args>]')
         optional = parser._action_groups.pop()
         required = parser.add_argument_group('required arguments')
         parser.add_argument(
             'result_file',
-            help='File with the results to be uploaded'
+            help='File with the results to be imported'
         )
         required.add_argument(
             '--scanner',
@@ -109,18 +114,18 @@ class Findings(object):
         optional.add_argument('--tag_test', help='Test tag (can be used multiple times)', action='append')
         optional.add_argument('--note',
                               help='Add the string passed to this flag as a'
-                                   'note to each finding uploaded'
+                                   'note to each finding imported'
                                    '(can have a big impact on performance'
                                    'depending on the amount of findings'
-                                   'uploaded)')
+                                   'imported)')
         optional.add_argument('--auto_close',
                               help='Close all open findings from the same '
                                   +'--test_type that are not listed on '
-                                  +'this upload (default = False)',
+                                  +'this import (default = False)',
                               action='store_true')
         optional.add_argument(
             '--skip_duplicates',
-            help='Dont upload duplicates '
+            help='Dont import duplicates '
                  '(requires deduplication) (default = False)',
             action='store_true'
         )
@@ -128,35 +133,35 @@ class Findings(object):
         # Parse out arguments ignoring the first three (because we're inside a sub-command)
         args = vars(parser.parse_args(sys.argv[3:]))
 
-        # Upload results
-        response = self.upload(**args)
-        # Load upload response as JSON
+        # Import results
+        response = self.import_(**args)
+        # Load import response as JSON
         out_error = False
         try:
-            upload_out = json.loads(response.text)
+            import_out = json.loads(response.text)
         except:
             out_error = True
 
         # If --note flag was passed
         if args['note'] is not None:
-            # Get the findings that were uploaded 
+            # Get the findings that were imported 
             tmp_args = dict()
             tmp_args['url'] = args['url']
             tmp_args['api_key'] = args['api_key']
-            tmp_args['test_id'] = upload_out['test'] # Get the test ID from the upload output
+            tmp_args['test_id'] = import_out['test'] # Get the test ID from the import output
             tmp_response = self.list(**tmp_args)
-            uploaded_findings_out = json.loads(tmp_response.text)
-            # Create a list with all the uploaded findings IDs
-            uploaded_findings_ids = set()
-            for uploaded_finding in uploaded_findings_out['results']:
-                uploaded_findings_ids.add(uploaded_finding['id'])
-            # Add note to each uploaded finding
+            imported_findings_out = json.loads(tmp_response.text)
+            # Create a list with all the imported findings IDs
+            imported_findings_ids = set()
+            for imported_finding in imported_findings_out['results']:
+                imported_findings_ids.add(imported_finding['id'])
+            # Add note to each imported finding
             tmp_args = dict()
             tmp_args['url'] = args['url']
             tmp_args['api_key'] = args['api_key']
             tmp_args['entry'] = args['note']
-            for uploaded_finding_id in uploaded_findings_ids:
-                tmp_args['finding_id'] = uploaded_finding_id
+            for imported_finding_id in imported_findings_ids:
+                tmp_args['finding_id'] = imported_finding_id
                 self.add_note(**tmp_args)
 
         # Pretty print JSON response
