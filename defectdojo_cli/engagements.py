@@ -5,6 +5,7 @@ import argparse
 import requests
 from unittest.mock import PropertyMock
 from defectdojo_cli.util import Util
+from defectdojo_cli.tests import Tests
 
 class Engagements(object):
     def parse_cli_args(self):
@@ -325,3 +326,45 @@ class Engagements(object):
         # Pretty print JSON response
         Util().default_output(response, sucess_status_code=200)
 
+    def get_engagements_by_test_tags(self, url, api_key, tags, tags_operator):
+        request_params = dict()
+        request_params['url'] = url
+        request_params['api_key'] = api_key
+
+        if tags_operator == 'union': # Default behaviour
+            # Make a request to API to list all tests with the tags we're looking for
+            request_params['tag'] = tags
+            response = Tests().list(**request_params)
+            # Parse output
+            json_out = json.loads(response.text)
+            results = json_out['results']
+            # Create set of all engagements from the response
+            engagement_set = set()
+            for test in results:
+                engagement_set.add(test['engagement'])
+            # Transform set to list
+            engagement_list = list(engagement_set)
+
+        elif tags_operator == 'intersect':
+            engagement_list_of_sets = list()
+            for tag in tags:
+                # Make a request to API to list all tests with the tags we're looking for
+                request_params['tag'] = tag
+                response = Tests().list(**request_params)
+                # Parse output
+                json_out = json.loads(response.text)
+                results = json_out['results']
+                # Create set of all engagements from the response
+                engagement_set = set()
+                for test in results:
+                    engagement_set.add(test['engagement'])
+                # Add set of engagement to list
+                engagement_list_of_sets.append(engagement_set)
+
+            # Get intersection between all sets
+            engagement_intersection = engagement_list_of_sets[0]
+            for engagement_set in engagement_list_of_sets[1:]:
+                engagement_intersection.intersection_update(engagement_set)
+            engagement_list = engagement_intersection
+
+        return list(engagement_list)

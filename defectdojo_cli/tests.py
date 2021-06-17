@@ -46,7 +46,10 @@ class Tests(object):
             # Add to request_params
             request_params['test_type'] = test_type_id
         if tag is not None:
-            request_params['tags'] = tag
+            if type(tag) is list:
+                request_params['tags'] = ','.join(tag)
+            else:
+                request_params['tags'] = tag
 
         # Make request
         response = Util().request_apiv2('GET', TESTS_URL, api_key, params=request_params)
@@ -116,7 +119,6 @@ class Tests(object):
                 test_type_set.add(test['test_type'])
             # Transform set to list
             test_type_list = list(test_type_set)
-
 
         elif tags_operator == 'intersect':
             test_type_list_of_sets = list()

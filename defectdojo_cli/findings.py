@@ -6,6 +6,7 @@ import requests
 from unittest.mock import PropertyMock
 from tabulate import tabulate
 from defectdojo_cli.util import Util
+from defectdojo_cli.engagements import Engagements
 from defectdojo_cli.tests import Tests
 
 class Findings(object):
@@ -171,7 +172,7 @@ class Findings(object):
         else:
             print(response.text)
 
-    def reimport_(self, url, api_key, result_file, scanner, scan_date, test_id,
+    def reimport(self, url, api_key, result_file, scanner, scan_date, test_id,
                   active=None, verified=None, min_severity=None, auto_close=None,
                   version=None, build_id=None, branch_tag=None, commit_hash=None,
                   **kwargs):
@@ -250,8 +251,7 @@ class Findings(object):
             '--scan_date',
             help='Date the scan was perfomed (default = TODAY)',
             metavar='YYYY-MM-DD',
-            default=datetime.now().strftime('%Y-%m-%d'),
-            required=True
+            default=datetime.now().strftime('%Y-%m-%d')
         )
 
         optional.add_argument(
@@ -323,7 +323,7 @@ class Findings(object):
         # Parse out arguments ignoring the first three (because we're inside a sub-command)
         args = vars(parser.parse_args(sys.argv[3:]))
         # Re-import results
-        response = self.reimport_(**args)
+        response = self.reimport(**args)
         # Load re-import response as JSON
         out_error = False
         try:
@@ -390,6 +390,8 @@ class Findings(object):
                 # If a test_type was passed by the user, append it to the list
                 test_type_list = test_type_list + test_type
             test_type = test_type_list
+            # Also get all engagements with the tags we're looking for
+            engagement_ids = Engagements().get_engagements_by_test_tags(url, api_key, tag_test, tags_operator)
         if test_type is not None:
             # Transform test_type names to IDs
             test_type_ids = set()
@@ -403,13 +405,13 @@ class Findings(object):
                     test_type_ids.add(json.loads(temp_response.text)['results'][0]['id'])
                 else:
                     test_type_ids.add(tt)
-            # If there's only one test_type
-            if len(test_type_ids) == 1:
+            # If there's only one test_type and no tags
+            if (len(test_type_ids) == 1) and (tag_test is None):
                 # Add to request_params
                 request_params['test__test_type'] = list(test_type_ids)[0]
             else:
-                # Use the appropriate metohd
-                return self.list_multiple_test_types(url, api_key, test_type_ids, **request_params)
+                # Use the appropriate method
+                return self.list_multiple_test_types(url, api_key, test_type_ids, engagement_ids, **request_params)
 
         # Make request
         response = Util().request_apiv2('GET', FINDINGS_URL, api_key, params=request_params)
@@ -460,7 +462,10 @@ class Findings(object):
         )
         optional.add_argument(
             '--tag_test',
-            help='Test tag (can be used multiple times)',
+            help='Test tag (can be used multiple times). The API call to '
+                 'filter by tags is bugged, so what this does under the '
+                 'hood is get all test_types and engagements from tests with '
+                 'theses tags and filter by them.',
             action='append'
         )
         optional.add_argument(
@@ -673,7 +678,7 @@ class Findings(object):
         response = Util().request_apiv2('POST', FINDINGS_ID_NOTES_URL, api_key, data=request_json)
         return response
 
-    def list_multiple_test_types(self, url, api_key, test_types, **kwargs):
+    def list_multiple_test_types(self, url, api_key, test_types, engagements, **kwargs):
         # Create parameters to be requested
         request_params = kwargs
         API_URL = url+'/api/v2'
@@ -683,21 +688,26 @@ class Findings(object):
         json_out_list = list()
         for test_type in test_types:
             request_params['test__test_type'] = test_type
+            request_params['related_fields'] = 'true'
             response = Util().request_apiv2('GET', FINDINGS_URL, api_key, params=request_params)
             json_out_list.append(json.loads(response.text))
 
         # Merge responses
-        try:
-            json_out_result = json_out_list[0]
-        except:
-            print('Something went wrong while parsing the tags, you sure they exist on DefectDojo?', file=sys.stderr)
-            exit(1)
-        for json_out in json_out_list[1:]:
-            json_out_result['count'] = json_out_result['count'] + json_out['count']
-            json_out_result['results'] = json_out_result['results'] + json_out['results']
+        json_out_result = dict()
+        json_out_result['count'] = 0
+        json_out_result['results'] = list()
+        for json_out in json_out_list:
+            # Only add findings inside the engagements list
+            if engagements:
+                for finding in json_out['results']:
+                    if finding['related_fields']['test']['engagement']['id'] in engagements:
+                        json_out_result['count'] += 1
+                        json_out_result['results'].append(finding)
 
-        # Make a request passing the list of test_types so that the url at the tool output works properly
+        # Make a request passing the list of test_types and engagements so that the url at the tool output works properly
         request_params['test__test_type'] = test_types
+        request_params['test__engagement'] = engagements
+        del request_params['related_fields']
         response = Util().request_apiv2('GET', FINDINGS_URL, api_key, params=request_params)
         # Replace the response with the one we created
         type(response).text = PropertyMock(return_value=json.dumps(json_out_result))
