@@ -17,6 +17,7 @@ class Findings(object):
     You can use the following sub_commands:
         import          Import findings (scan results)
         upload          Same as import (deprecated, EOL december/2021)
+        reimport        Re-import findings of a test
         list            List findings
         update          Update a finding
         close           Close a finding
@@ -169,6 +170,173 @@ class Findings(object):
             Util().default_output(response, sucess_status_code=201)
         else:
             print(response.text)
+
+    def reimport_(self, url, api_key, result_file, scanner, scan_date, test_id,
+                  active=None, verified=None, min_severity=None, auto_close=None,
+                  version=None, build_id=None, branch_tag=None, commit_hash=None,
+                  **kwargs):
+        # Prepare JSON data to be send
+        request_json = dict()
+        API_URL = url+'/api/v2'
+        REIMPORT_SCAN_URL = API_URL+'/reimport-scan/'
+        request_json['scan_type'] = scanner
+        request_json['scan_date'] = scan_date
+        request_json['test'] = test_id
+
+        if active is not None:
+            request_json['active'] = active
+        if verified is not None:
+            request_json['verified'] = verified
+        if min_severity is not None:
+            request_json['minimum_severity'] = min_severity
+        if auto_close is not None:
+            request_json['close_old_findings'] = True
+        if version is not None:
+            request_json['version'] = True
+        if build_id is not None:
+            request_json['build_id'] = True
+        if branch_tag is not None:
+            request_json['branch_tag'] = True
+        if commit_hash is not None:
+            request_json['commit_hash'] = True
+
+        # Prepare file data to be send
+        files = dict()
+        files['file'] = open(result_file)
+
+        # Make request
+        response = Util().request_apiv2(
+            'POST', REIMPORT_SCAN_URL, api_key, files=files, data=request_json
+        )
+        return response
+
+    def _reimport(self):
+        # Read user-supplied arguments
+        parser = argparse.ArgumentParser(description='Re-import findings (scan results) to DefectDojo',
+                                         usage='defectdojo findings reimport RESULT_FILE [<args>]')
+        optional = parser._action_groups.pop()
+        required = parser.add_argument_group('required arguments')
+
+        parser.add_argument(
+            'result_file',
+            help='File with the results to be imported'
+        )
+
+        required.add_argument(
+            '--scanner',
+            help='Type of scanner',
+            required=True
+        )
+
+        required.add_argument(
+            '--url',
+            help='DefectDojo URL',
+            required=True
+        )
+
+        required.add_argument(
+            '--api_key',
+            help='API v2 Key',
+            required=True
+        )
+
+        required.add_argument(
+            '--test_id',
+            help='Test to reimport',
+            required=True
+        )
+
+        optional.add_argument(
+            '--scan_date',
+            help='Date the scan was perfomed (default = TODAY)',
+            metavar='YYYY-MM-DD',
+            default=datetime.now().strftime('%Y-%m-%d'),
+            required=True
+        )
+
+        optional.add_argument(
+            '--active',
+            help='Mark vulnerabilities found as active (default)',
+            action='store_true',
+            dest='active'
+        )
+
+        optional.add_argument(
+            '--inactive',
+            help='Mark vulnerabilities found as inactive',
+            action='store_false',
+            dest='active'
+        )
+
+        optional.add_argument(
+            '--verified',
+            help='Mark vulnerabilities found as verified',
+            action='store_true',
+            dest='verified'
+        )
+
+        optional.add_argument(
+            '--unverified',
+            help='Mark vulnerabilities found as unverified (default)',
+            action='store_false',
+            dest='verified'
+        )
+
+        optional.set_defaults(active=True, verified=False)
+
+        optional.add_argument(
+            '--min_severity',
+            help='Ignore findings below this severity (default = "Low")',
+            choices=['Informational', 'Low', 'Medium', 'High', 'Critical'],
+            default='Low'
+        )
+
+        optional.add_argument(
+            '--auto_close',
+            help='Close all open findings from the same --test_type that are '
+                 'not listed on this import (default = False)',
+            action='store_true'
+        )
+
+        optional.add_argument(
+            '--version',
+            help='Current version of the project'
+        )
+
+        optional.add_argument(
+            '--build_id',
+            help='Build ID'
+        )
+
+        optional.add_argument(
+            '--branch_tag',
+            help='Branch or tag scanned'
+        )
+
+        optional.add_argument(
+            '--commit_hash',
+            help='Commit HASH'
+        )
+
+        parser._action_groups.append(optional)
+
+        # Parse out arguments ignoring the first three (because we're inside a sub-command)
+        args = vars(parser.parse_args(sys.argv[3:]))
+        # Re-import results
+        response = self.reimport_(**args)
+        # Load re-import response as JSON
+        out_error = False
+        try:
+            import_out = json.loads(response.text)
+        except:
+            out_error = True
+
+        # Pretty print JSON response
+        if not out_error:
+            Util().default_output(response, sucess_status_code=201)
+        else:
+            print(response.text)
+
 
     def list(self, url, api_key, finding_id=None, test_id=None, product_id=None,
              engagement_id=None, test_type=None, active=None, closed=None,
