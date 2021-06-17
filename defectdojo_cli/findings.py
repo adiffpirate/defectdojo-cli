@@ -193,13 +193,13 @@ class Findings(object):
         if auto_close is not None:
             request_json['close_old_findings'] = True
         if version is not None:
-            request_json['version'] = True
+            request_json['version'] = version
         if build_id is not None:
-            request_json['build_id'] = True
+            request_json['build_id'] = build_id
         if branch_tag is not None:
-            request_json['branch_tag'] = True
+            request_json['branch_tag'] = branch_tag
         if commit_hash is not None:
-            request_json['commit_hash'] = True
+            request_json['commit_hash'] = commit_hash
 
         # Prepare file data to be send
         files = dict()
