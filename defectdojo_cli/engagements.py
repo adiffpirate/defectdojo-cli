@@ -247,13 +247,15 @@ class Engagements(object):
         # Pretty print JSON response
         Util().default_output(response, sucess_status_code=200)
 
-    def list(self, url, api_key, name=None, **kwargs):
+    def list(self, url, api_key, name=None, product_id=None, **kwargs):
         # Create parameters to be requested
         request_params = dict()
         API_URL = url+'/api/v2'
         ENGAGEMENTS_URL = API_URL+'/engagements/'
         if name is not None:
             request_params['name'] = name
+        if product_id is not None:
+            request_params['product'] = product_id
 
         # Make the request
         response = Util().request_apiv2('GET', ENGAGEMENTS_URL, api_key, params=request_params)
@@ -278,6 +280,10 @@ class Engagements(object):
         optional.add_argument(
             '--name',
             help='Engagement name'
+        )
+        optional.add_argument(
+            '--product_id',
+            help='Product ID'
         )
         parser._action_groups.append(optional)
         # Parse out arguments ignoring the first three (because we're inside a sub_command)
