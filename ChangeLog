@@ -1,6 +1,22 @@
 CHANGES
 =======
 
+v0.4.0
+------
+
+* Changed --local\_dedup, is no longer a toggle
+* Added flags to set version, build\_id, branch\_tag, commit\_hash when importing findings
+* Fixing some flag at Findings.reimport()
+* Improved accuracy when filtering findings by tags
+* New feature: Reimport of findings
+* Changed upload to import to comply with DefectDojo naming convention
+* New feature: Added possibility to filter engagements by product ID
+* New feature: Added flag --local\_dedup at Engagements.create()
+* New feature: Engagements.reopen()
+* New feature: Engagements.list()
+* Changed sub\_command arg parsing from hard-coded to dynamic
+* Fixed typo at README
+
 v0.3.7
 ------
 
