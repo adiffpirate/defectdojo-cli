@@ -40,7 +40,8 @@ class Findings(object):
     def import_(self, url, api_key, result_file, scanner, engagement_id, lead_id,
                active=None, verified=None, scan_date=None, min_severity=None,
                tag_test=None, test_type=None, env=None, auto_close=None,
-               skip_duplicates=None, **kwargs):
+               skip_duplicates=None, version=None, build_id=None, branch_tag=None,
+                commit_hash=None, **kwargs):
         # Prepare JSON data to be send
         request_json = dict()
         API_URL = url+'/api/v2'
@@ -69,6 +70,14 @@ class Findings(object):
             request_json['close_old_findings'] = True
         if skip_duplicates is not None:
             request_json['skip_duplicates'] = True
+        if version is not None:
+            request_json['version'] = version
+        if build_id is not None:
+            request_json['build_id'] = build_id
+        if branch_tag is not None:
+            request_json['branch_tag'] = branch_tag
+        if commit_hash is not None:
+            request_json['commit_hash'] = commit_hash
 
         # Prepare file data to be send
         files = dict()
@@ -125,11 +134,32 @@ class Findings(object):
                                   +'--test_type that are not listed on '
                                   +'this import (default = False)',
                               action='store_true')
+
         optional.add_argument(
             '--skip_duplicates',
             help='Dont import duplicates '
                  '(requires deduplication) (default = False)',
             action='store_true'
+        )
+
+        optional.add_argument(
+            '--version',
+            help='Current version of the project'
+        )
+
+        optional.add_argument(
+            '--build_id',
+            help='Build ID'
+        )
+
+        optional.add_argument(
+            '--branch_tag',
+            help='Branch or tag scanned'
+        )
+
+        optional.add_argument(
+            '--commit_hash',
+            help='Commit HASH'
         )
         parser._action_groups.append(optional)
         # Parse out arguments ignoring the first three (because we're inside a sub-command)
