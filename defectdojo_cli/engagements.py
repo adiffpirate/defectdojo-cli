@@ -64,7 +64,10 @@ class Engagements(object):
         if tag is not None:
             request_json['tags'] = tag
         if local_dedup is not None:
-            request_json['deduplication_on_engagement'] = local_dedup
+            if local_dedup == 'true':
+                request_json['deduplication_on_engagement'] = True
+            else:
+                request_json['deduplication_on_engagement'] = False
         request_json = json.dumps(request_json)
 
         # Make the request
@@ -131,8 +134,8 @@ class Engagements(object):
             'this engagement as duplicate of another finding if both '
             'findings are in this engagement. If disabled, deduplication '
             'is on the product level. (default = false)',
-            action='store_true',
-            default=False
+            choices=['true', 'false'],
+            default='false'
         )
         parser._action_groups.append(optional)
         # Parse out arguments ignoring the first three (because we're inside a sub_command)
