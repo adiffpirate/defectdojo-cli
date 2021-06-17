@@ -31,7 +31,7 @@ class Engagements(object):
                start_date=None, end_date=None, engagement_type=None,
                status=None, build_id=None, repo_url=None, branch_tag=None,
                commit_hash=None, product_version=None, tracker=None,
-               tag=None, **kwargs):
+               tag=None, local_dedup=None, **kwargs):
         # Prepare JSON data to be send
         request_json = dict()
         API_URL = url+'/api/v2'
@@ -62,6 +62,8 @@ class Engagements(object):
             request_json['tracker'] = tracker
         if tag is not None:
             request_json['tags'] = tag
+        if local_dedup is not None:
+            request_json['deduplication_on_engagement'] = local_dedup
         request_json = json.dumps(request_json)
 
         # Make the request
@@ -121,6 +123,15 @@ class Engagements(object):
             '--tag',
             help='Engagement tag (can be used multiple times)',
             action='append'
+        )
+        optional.add_argument(
+            '--local_dedup',
+            help='If enabled deduplication will only mark a finding in '
+            'this engagement as duplicate of another finding if both '
+            'findings are in this engagement. If disabled, deduplication '
+            'is on the product level. (default = false)',
+            action='store_true',
+            default=False
         )
         parser._action_groups.append(optional)
         # Parse out arguments ignoring the first three (because we're inside a sub_command)
