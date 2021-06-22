@@ -1,9 +1,15 @@
 CHANGES
 =======
 
+v0.4.1
+------
+
+* Added option to limit tests amount when listing (gets all by default)
+
 v0.4.0
 ------
 
+* v0.4.0
 * Changed --local\_dedup, is no longer a toggle
 * Added flags to set version, build\_id, branch\_tag, commit\_hash when importing findings
 * Fixing some flag at Findings.reimport()

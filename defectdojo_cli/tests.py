@@ -26,7 +26,7 @@ class Tests(object):
         getattr(self, '_'+args.sub_command)()
 
     def list(self, url, api_key, test_id=None, engagement_id=None,
-             test_type=None, tag=None, **kwargs):
+             test_type=None, tag=None, limit=None, **kwargs):
         # Create parameters to be requested
         request_params = dict()
         API_URL = url+'/api/v2'
@@ -50,6 +50,17 @@ class Tests(object):
                 request_params['tags'] = ','.join(tag)
             else:
                 request_params['tags'] = tag
+        if limit is not None:
+            request_params['limit'] = limit
+        else:
+            # Make a request to API getting only one test to retrieve the total amount of tests
+            temp_params = request_params.copy()
+            temp_params['url'] = url
+            temp_params['api_key'] = api_key
+            temp_params['limit'] = 1
+            temp_response = self.list(**temp_params)
+            limit = int(json.loads(temp_response.text)['count'])
+            request_params['limit'] = limit
 
         # Make request
         response = Util().request_apiv2('GET', TESTS_URL, api_key, params=request_params)
@@ -84,6 +95,10 @@ class Tests(object):
         optional.add_argument(
             '--tag',
             help='Test tag (can be used multiple times)', action='append'
+        )
+        optional.add_argument(
+            '--limit',
+            help='Number of results to return (by default it gets all the tests)'
         )
         optional.set_defaults(active=None, valid=None, scope=None)
         parser._action_groups.append(optional)
