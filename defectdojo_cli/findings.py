@@ -536,9 +536,12 @@ class Findings(object):
                     components = set()
                     for finding in json_out['results']:
                         if finding['component_name'] is not None:
-                            components.add(finding['component_name']+' v'+finding['component_version'])
+                            if finding['component_version'] is not None:
+                                components.add('    ' + finding['component_name']+' v'+finding['component_version'])
+                            else:
+                                components.add('    ' + finding['component_name'])
                     if components:
-                        print('\nComponents:')
+                        print('\nVulnerable components:')
                         for component in sorted(components):
                             print(component)
 

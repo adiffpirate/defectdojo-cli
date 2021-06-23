@@ -1,6 +1,11 @@
 CHANGES
 =======
 
+v0.4.2
+------
+
+* Fixed bug when listing finding that has component\_name but not component\_version
+
 v0.4.1
 ------
 
