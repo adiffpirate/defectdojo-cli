@@ -36,13 +36,16 @@ class Tests(object):
         if engagement_id is not None:
             request_params['engagement'] = engagement_id
         if test_type is not None:
-        # In order to filter test_type we need to get its ID via API
-            temp_params = dict()
-            temp_params['name'] = test_type
-            # Make a get request to /test_types passing the test_type as parameter
-            temp_response = Util().request_apiv2('GET', API_URL+'/test_types/', api_key, params=temp_params)
-            # Tranform the above response in json and get the id
-            test_type_id = json.loads(temp_response.text)['results'][0]['id']
+            # In order to filter test_type we need to get its ID via API
+            if type(test_type) is int:
+                test_type_id = test_type
+            else:
+                temp_params = dict()
+                temp_params['name'] = test_type
+                # Make a get request to /test_types passing the test_type as parameter
+                temp_response = Util().request_apiv2('GET', API_URL+'/test_types/', api_key, params=temp_params)
+                # Tranform the above response in json and get the id
+                test_type_id = json.loads(temp_response.text)['results'][0]['id']
             # Add to request_params
             request_params['test_type'] = test_type_id
         if tag is not None:
