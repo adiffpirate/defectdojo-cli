@@ -119,11 +119,13 @@ class Tests(object):
         # Pretty print JSON response
         Util().default_output(response, sucess_status_code=200)
 
-    def get_test_type_by_tags(self, url, api_key, tags, tags_operator):
+    def get_test_type_by_tags(self, url, api_key, tags, tags_operator, engagement_id=None):
         # First make a request to API getting all test types with the tags we're looking for
         request_params = dict()
         request_params['url'] = url
         request_params['api_key'] = api_key
+        if engagement_id:
+            request_params['engagement_id'] = engagement_id
 
         if tags_operator == 'union': # Default behaviour
             request_params['tag'] = tags

@@ -3,6 +3,7 @@ import json
 import sys
 import argparse
 import requests
+import re
 from unittest.mock import PropertyMock
 from tabulate import tabulate
 from defectdojo_cli.util import Util
@@ -413,7 +414,7 @@ class Findings(object):
             request_params['limit'] = limit
         if tag_test:
             # First get all test types with the tags we're looking for
-            test_type_list = Tests().get_test_type_by_tags(url, api_key, tag_test, tags_operator)
+            test_type_list = Tests().get_test_type_by_tags(url, api_key, tag_test, tags_operator, engagement_id)
             # Add them to request parameters
             #   (so the tags aren't actually passed to request, only their test_types)
             if test_type is not None:
@@ -421,7 +422,11 @@ class Findings(object):
                 test_type_list = test_type_list + test_type
             test_type = test_type_list
             # Also get all engagements with the tags we're looking for
-            engagement_ids = Engagements().get_engagements_by_test_tags(url, api_key, tag_test, tags_operator)
+            if engagement_id:
+                engagement_ids = list()
+                engagement_ids.append(engagement_id)
+            else:
+                engagement_ids = Engagements().get_engagements_by_test_tags(url, api_key, tag_test, tags_operator)
         if test_type is not None:
             # Transform test_type names to IDs
             test_type_ids = set()
@@ -435,13 +440,14 @@ class Findings(object):
                     test_type_ids.add(json.loads(temp_response.text)['results'][0]['id'])
                 else:
                     test_type_ids.add(tt)
-            # If there's only one test_type and no tags
-            if (len(test_type_ids) == 1) and (tag_test is None):
+            # If there's only one test_type
+            if (len(test_type_ids) == 1):
                 # Add to request_params
                 request_params['test__test_type'] = list(test_type_ids)[0]
             else:
-                # Use the appropriate method
-                return self.list_multiple_test_types(url, api_key, test_type_ids, engagement_ids, **request_params)
+                if len(tag_test) > 1:
+                    # Use the appropriate method
+                    return self.list_multiple_test_types(url, api_key, test_type_ids, engagement_ids, **request_params)
 
         # Make request
         response = Util().request_apiv2('GET', FINDINGS_URL, api_key, params=request_params)
@@ -549,6 +555,8 @@ class Findings(object):
                     if args['product_id'] is not None: # If a product id was passed
                         # Print link specific for that product
                         findings_list_url = response.request.url.replace('api/v2/findings/', 'product/'+args['product_id']+'/finding/all') # Mount URL using the previous API call as base
+                        findings_list_url = re.sub('test__engagement__product=\d+&?', '', findings_list_url)
+                        findings_list_url = re.sub('limit=\d+&?', '', findings_list_url)
                         print('\n\nYou can also view this list on DefectDojo:\n'+findings_list_url) # Print URL
                     else:
                         # Print general link
