@@ -15,6 +15,7 @@ class Tests(object):
 
     You can use the following sub_commands:
         list            List tests
+        update          Update a test
 ''')
         parser.add_argument(
             'sub_command',
@@ -162,3 +163,115 @@ class Tests(object):
             test_type_list = test_type_intersection
 
         return list(test_type_list)
+
+    def update(self, url, api_key, test_id, title=None, desc=None,
+               start_date=None, end_date=None, version=None, build_id=None,
+               commit_hash=None, branch_tag=None, lead_id=None, test_type=None,
+               environment=None, **kwargs):
+        # Prepare JSON data to be send
+        request_json = dict()
+        API_URL = url+'/api/v2'
+        TESTS_URL = API_URL+'/tests/'
+        TESTS_ID_URL = TESTS_URL+test_id+'/'
+        if title:
+            request_json['title'] = title
+        if desc:
+            request_json['description'] = desc
+        if start_date:
+            request_json['target_start'] = start_date
+        if end_date:
+            request_json['target_end'] = end_date
+        if version:
+            request_json['version'] = version
+        if build_id:
+            request_json['build_id'] = build_id
+        if commit_hash:
+            request_json['commit_hash'] = commit_hash
+        if branch_tag:
+            request_json['branch_tag'] = branch_tag
+        if lead_id:
+            request_json['lead'] = lead_id
+        if test_type:
+            request_json['test_type'] = test_type
+        if environment:
+            request_json['enviroment'] = enviroment
+        request_json = json.dumps(request_json)
+
+        # Make the request
+        response = Util().request_apiv2('PATCH', TESTS_ID_URL, api_key, data=request_json)
+        return response
+
+    def _update(self):
+        # Read user-supplied arguments
+        parser = argparse.ArgumentParser(description='Update a test on DefectDojo',
+                                         usage='defectdojo tests update TEST_ID [<args>]')
+        optional = parser._action_groups.pop()
+        required = parser.add_argument_group('required arguments')
+
+        parser.add_argument(
+            'test_id', help='ID of the test to be updated'
+        )
+
+        required.add_argument(
+            '--url', help='DefectDojo URL', required=True
+        )
+
+        required.add_argument(
+            '--api_key', help='API v2 Key', required=True
+        )
+
+        optional.add_argument(
+            '--title', help='Test title'
+        )
+
+        optional.add_argument(
+            '--desc', help='Test description', metavar='DESCRIPTION'
+        )
+
+        optional.add_argument(
+            '--start_date', help='Test starting date', metavar='YYYY-MM-DD'
+        )
+
+        optional.add_argument(
+            '--end_date', help='Test ending date', metavar='YYYY-MM-DD'
+        )
+
+        optional.add_argument(
+            '--version', help='Test version'
+        )
+
+        optional.add_argument(
+            '--build_id', help='Test build ID'
+        )
+
+        optional.add_argument(
+            '--commit_hash', help='Test commit hash'
+        )
+
+        optional.add_argument(
+            '--test_type', help='Test type'
+        )
+
+        optional.add_argument(
+            '--environment', help='Test environment'
+        )
+
+        optional.add_argument(
+            '--branch_tag',
+            help='Tag or branch of the product the engagement tested',
+            metavar='TAG_OR_BRANCH'
+        )
+
+        optional.add_argument(
+            '--lead_id', help='ID of the user responsible for this test'
+        )
+
+        parser._action_groups.append(optional)
+        # Parse out arguments ignoring the first three (because we're inside a sub_command)
+        args = vars(parser.parse_args(sys.argv[3:]))
+
+        # Update engagement
+        response = self.update(**args)
+
+        # Pretty print JSON response
+        Util().default_output(response, sucess_status_code=200)
