@@ -344,7 +344,7 @@ class Engagements(object):
             # Create set of all engagements from the response
             engagement_set = set()
             for test in results:
-                engagement_set.add(test['engagement'])
+                engagement_set.add(str(test['engagement']))
             # Transform set to list
             engagement_list = list(engagement_set)
 
@@ -360,7 +360,7 @@ class Engagements(object):
                 # Create set of all engagements from the response
                 engagement_set = set()
                 for test in results:
-                    engagement_set.add(test['engagement'])
+                    engagement_set.add(str(test['engagement']))
                 # Add set of engagement to list
                 engagement_list_of_sets.append(engagement_set)
 

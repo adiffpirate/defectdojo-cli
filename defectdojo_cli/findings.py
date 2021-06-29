@@ -423,8 +423,7 @@ class Findings(object):
             test_type = test_type_list
             # Also get all engagements with the tags we're looking for
             if engagement_id:
-                engagement_ids = list()
-                engagement_ids.append(engagement_id)
+                engagement_ids = [engagement_id]
             else:
                 engagement_ids = Engagements().get_engagements_by_test_tags(url, api_key, tag_test, tags_operator)
         if test_type is not None:
@@ -445,9 +444,8 @@ class Findings(object):
                 # Add to request_params
                 request_params['test__test_type'] = list(test_type_ids)[0]
             else:
-                if len(tag_test) > 1:
-                    # Use the appropriate method
-                    return self.list_multiple_test_types(url, api_key, test_type_ids, engagement_ids, **request_params)
+                # Use the appropriate method
+                return self.list_multiple_test_types(url, api_key, test_type_ids, engagement_ids, **request_params)
 
         # Make request
         response = Util().request_apiv2('GET', FINDINGS_URL, api_key, params=request_params)
@@ -741,7 +739,7 @@ class Findings(object):
             # Only add findings inside the engagements list
             if engagements:
                 for finding in json_out['results']:
-                    if finding['related_fields']['test']['engagement']['id'] in engagements:
+                    if str(finding['related_fields']['test']['engagement']['id']) in engagements:
                         json_out_result['count'] += 1
                         json_out_result['results'].append(finding)
 
