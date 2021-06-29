@@ -5,7 +5,7 @@ import requests
 class Util(object):
     # Generic method for all HTTP requests
     # IMPORTANT: The url must end with '/', otherwise some requests will not work
-    def request_apiv2(self, http_method, url, api_key, params=dict(), data=None, files=None, verify=False):
+    def request_apiv2(self, http_method, url, api_key, params=dict(), data=None, files=None, verify=True):
         headers = dict()
         headers['Authorization'] = 'Token '+api_key
         if not files:

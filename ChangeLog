@@ -1,6 +1,12 @@
 CHANGES
 =======
 
+v0.4.5
+------
+
+* Changed requests to verify SSL by default
+* Bugfix
+
 v0.4.4
 ------
 
