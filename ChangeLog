@@ -1,9 +1,15 @@
 CHANGES
 =======
 
+v0.5.2
+------
+
+* Bufix: Removing special char that appears on list URL for some reason
+
 v0.5.1
 ------
 
+* ChangeLog update
 * Simplifing logic when listing findings by tag\_test
 
 v0.5.0
