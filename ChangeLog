@@ -1,9 +1,15 @@
 CHANGES
 =======
 
+v0.5.1
+------
+
+* Simplifing logic when listing findings by tag\_test
+
 v0.5.0
 ------
 
+* ChangeLog update
 * New feature: Test update
 
 v0.4.5
