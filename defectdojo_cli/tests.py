@@ -137,7 +137,7 @@ class Tests(object):
             # Create set of all test types from the tag
             test_type_set = set()
             for test in results:
-                test_type_set.add(test['test_type'])
+                test_type_set.add(test['test_type_name'])
             # Transform set to list
             test_type_list = list(test_type_set)
 
