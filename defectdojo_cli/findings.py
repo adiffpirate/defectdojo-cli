@@ -121,8 +121,8 @@ class Findings(object):
         optional.add_argument('--unverified', help='Mark vulnerabilities found as unverified (default)',
                               action='store_false', dest='verified')
         optional.set_defaults(active=True, verified=False)
-        optional.add_argument('--min_severity', help='Ignore findings below this severity (default = "Low")',
-                              choices=['Informational', 'Low', 'Medium', 'High', 'Critical'], default='Low')
+        optional.add_argument('--min_severity', help='Ignore findings below this severity (default = "Info")',
+                              choices=['Info', 'Low', 'Medium', 'High', 'Critical'], default='Info')
         optional.add_argument('--tag_test', help='Test tag (can be used multiple times)', action='append')
         optional.add_argument('--note',
                               help='Add the string passed to this flag as a'
