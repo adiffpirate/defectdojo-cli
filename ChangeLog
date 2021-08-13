@@ -1,9 +1,15 @@
 CHANGES
 =======
 
+v0.6.0
+------
+
+* Changed minimum severity import from Low to Info
+
 v0.5.2
 ------
 
+* ChangeLog update
 * Bufix: Removing special char that appears on list URL for some reason
 
 v0.5.1
