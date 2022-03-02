@@ -14,6 +14,7 @@ class Tests(object):
             usage='''defectdojo tests <sub_command> [<args>]
 
     You can use the following sub_commands:
+        create          Create a test
         list            List tests
         update          Update a test
 ''')
@@ -25,6 +26,7 @@ class Tests(object):
         args = parser.parse_args(sys.argv[2:3])
         # Use dispatch pattern to invoke method with same name (that starts with _)
         getattr(self, '_'+args.sub_command)()
+
 
     def list(self, url, api_key, test_id=None, engagement_id=None,
              test_type=None, tag=None, limit=None, **kwargs):
@@ -69,6 +71,7 @@ class Tests(object):
         # Make request
         response = Util().request_apiv2('GET', TESTS_URL, api_key, params=request_params)
         return response
+
 
     def _list(self):
         # Read user-supplied arguments
@@ -120,6 +123,7 @@ class Tests(object):
         # Pretty print JSON response
         Util().default_output(response, sucess_status_code=200)
 
+
     def get_test_type_by_tags(self, url, api_key, tags, tags_operator, engagement_id=None):
         # First make a request to API getting all test types with the tags we're looking for
         request_params = dict()
@@ -164,6 +168,7 @@ class Tests(object):
 
         return list(test_type_list)
 
+
     def update(self, url, api_key, test_id, title=None, desc=None,
                start_date=None, end_date=None, version=None, build_id=None,
                commit_hash=None, branch_tag=None, lead_id=None, test_type=None,
@@ -200,6 +205,7 @@ class Tests(object):
         # Make the request
         response = Util().request_apiv2('PATCH', TESTS_ID_URL, api_key, data=request_json)
         return response
+
 
     def _update(self):
         # Read user-supplied arguments
@@ -275,3 +281,157 @@ class Tests(object):
 
         # Pretty print JSON response
         Util().default_output(response, sucess_status_code=200)
+
+
+    def _create(self):
+        # Read user-supplied arguments
+        parser = argparse.ArgumentParser(description='Create a test on DefectDojo',
+                                         usage='defectdojo tests create [<args>]')
+        optional = parser._action_groups.pop()
+        required = parser.add_argument_group('required arguments')
+
+        parser.add_argument(
+            '--engagement_id',
+            help='ID of the engagement where the test will be created',
+            required=True
+        )
+
+        required.add_argument(
+            '--url', help='DefectDojo URL', required=True
+        )
+
+        required.add_argument(
+            '--api_key', help='API v2 Key', required=True
+        )
+
+        optional.add_argument(
+            '--title', help='Test title'
+        )
+
+        optional.add_argument(
+            '--desc', help='Test description', metavar='DESCRIPTION'
+        )
+
+        optional.add_argument(
+            '--start_date', help='Test starting date (default = TODAY)',
+            metavar='YYYY-MM-DDThh:mm[:ss[.uuuuuu]][+HH:MM|-HH:MM|Z]',
+            default=datetime.now().strftime('%Y-%m-%dT%H:%M')
+        )
+
+        optional.add_argument(
+            '--end_date', help='Test ending date (default = TODAY)',
+            metavar='YYYY-MM-DDThh:mm[:ss[.uuuuuu]][+HH:MM|-HH:MM|Z]',
+            default=datetime.now().strftime('%Y-%m-%dT%H:%M')
+        )
+
+        optional.add_argument(
+            '--version', help='Test version'
+        )
+
+        optional.add_argument(
+            '--build_id', help='Test build ID'
+        )
+
+        optional.add_argument(
+            '--commit_hash', help='Test commit hash'
+        )
+
+        optional.add_argument(
+            '--test_type', help='Test type'
+        )
+
+        optional.add_argument(
+            '--env', help='Test environment'
+        )
+
+        optional.add_argument(
+            '--branch_tag',
+            help='Tag or branch of the product the engagement tested',
+            metavar='TAG_OR_BRANCH'
+        )
+
+        optional.add_argument(
+            '--lead_id', help='ID of the user responsible for this test'
+        )
+
+        optional.add_argument(
+            '--tag',
+            help='Test tag (can be used multiple times)', action='append'
+        )
+
+        parser._action_groups.append(optional)
+        # Parse out arguments ignoring the first three (because we're inside a sub_command)
+        args = vars(parser.parse_args(sys.argv[3:]))
+
+        # Create test
+        response = self.create(**args)
+
+        # Pretty print JSON response
+        Util().default_output(response, sucess_status_code=200)
+
+
+    def create(self, url, api_key, engagement_id, title=None, desc=None,
+               start_date=None, end_date=None, version=None, build_id=None,
+               commit_hash=None, branch_tag=None, lead_id=None, test_type=None,
+               env=None, tag=None, **kwargs):
+        # Prepare JSON data to be send
+        request_json = dict()
+        API_URL = url+'/api/v2'
+        TESTS_URL = API_URL+'/tests/'
+        if engagement_id:
+            request_json['engagement'] = engagement_id
+        if title:
+            request_json['title'] = title
+        if desc:
+            request_json['description'] = desc
+        if start_date:
+            request_json['target_start'] = start_date
+        if end_date:
+            request_json['target_end'] = end_date
+        if version:
+            request_json['version'] = version
+        if build_id:
+            request_json['build_id'] = build_id
+        if commit_hash:
+            request_json['commit_hash'] = commit_hash
+        if branch_tag:
+            request_json['branch_tag'] = branch_tag
+        if lead_id:
+            request_json['lead'] = lead_id
+        if test_type:
+            # Get test_type ID via API
+            if type(test_type) is int:
+                test_type_id = test_type
+            else:
+                temp_params = dict()
+                temp_params['name'] = test_type
+                # Make a get request to /test_types passing the test_type as parameter
+                temp_response = Util().request_apiv2('GET', API_URL+'/test_types/', api_key, params=temp_params)
+                # Tranform the above response in json and get the id
+                test_type_id = json.loads(temp_response.text)['results'][0]['id']
+            # Add to request_params
+            request_json['test_type'] = test_type_id
+        if env:
+            # Get environment ID via API
+            if type(env) is int:
+                env_id = env
+            else:
+                # Make a get request to /development_environments passing the environment as parameter
+                temp_response = Util().request_apiv2('GET', API_URL+'/development_environments/', api_key)
+                # Tranform the above response in json and get the results list
+                results = json.loads(temp_response.text)['results']
+                for result in results:
+                    if result['name'] == env:
+                        env_id = result['id']
+            # Add to request_params
+            try:
+                request_json['environment'] = env_id
+            except:
+                raise Exception("Environment does not exists")
+        if tag:
+            request_json['tags'] = tag
+        request_json = json.dumps(request_json)
+
+        # Make the request
+        response = Util().request_apiv2('POST', TESTS_URL, api_key, data=request_json)
+        return response
