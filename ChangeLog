@@ -1,9 +1,17 @@
 CHANGES
 =======
 
+0.7.1
+-----
+
+* Fixed release script permissions
+* Added flags to filter tests by title
+* Added release script
+
 0.7.0
 -----
 
+* Release 0.7.0
 * New feature: Create Test
 
 v0.6.0
