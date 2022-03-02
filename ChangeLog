@@ -1,9 +1,15 @@
 CHANGES
 =======
 
+0.7.0
+-----
+
+* New feature: Create Test
+
 v0.6.0
 ------
 
+* ChangeLog update
 * Changed minimum severity import from Low to Info
 
 v0.5.2
