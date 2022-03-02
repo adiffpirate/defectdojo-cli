@@ -28,7 +28,7 @@ class Tests(object):
         getattr(self, '_'+args.sub_command)()
 
 
-    def list(self, url, api_key, test_id=None, engagement_id=None,
+    def list(self, url, api_key, test_id=None, title=None, engagement_id=None,
              test_type=None, tag=None, limit=None, **kwargs):
         # Create parameters to be requested
         request_params = dict()
@@ -36,6 +36,8 @@ class Tests(object):
         TESTS_URL = API_URL+'/tests/'
         if test_id is not None:
             request_params['id'] = test_id
+        if title is not None:
+            request_params['title'] = title
         if engagement_id is not None:
             request_params['engagement'] = engagement_id
         if test_type is not None:
@@ -94,6 +96,9 @@ class Tests(object):
         optional.add_argument(
             '--test_type',
             help='Filter by test type'
+        )
+        optional.add_argument(
+            '--title', help='Filter by test title'
         )
         optional.add_argument(
             '--engagement_id',
